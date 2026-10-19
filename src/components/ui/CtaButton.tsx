@@ -12,8 +12,12 @@ const Fleche = ({ className }: { className: string }) => (
   <svg
     viewBox="0 0 24 24"
     aria-hidden
-    className={`absolute w-6 fill-current transition-all duration-[800ms]
-                ease-[cubic-bezier(0.23,1,0.32,1)] ${className}`}
+    // `transition-[left,right]` et non `transition-all` : on nomme les
+    // propriétés animées. Le retour est plus court que l'aller — le
+    // système répond vite quand l'utilisateur s'en va.
+    className={`absolute w-6 fill-current transition-[left,right]
+                duration-[160ms] ease-[cubic-bezier(0.23,1,0.32,1)]
+                group-hover:duration-[220ms] ${className}`}
   >
     <path d="M16.1716 10.9999L10.8076 5.63589L12.2218 4.22168L20 11.9999L12.2218 19.778L10.8076 18.3638L16.1716 12.9999H4V10.9999H16.1716Z" />
   </svg>
@@ -56,7 +60,8 @@ export function CtaButton({
                   ${pleineLargeur ? "w-full" : "w-fit"}
                   justify-center overflow-hidden rounded-pill
                   border-2 border-cta font-bold text-fg
-                  active:scale-[0.96]
+                  transition-transform duration-[120ms]
+                  ease-[cubic-bezier(0.23,1,0.32,1)] active:scale-[0.96]
                   ${dimensions} ${className}`}
     >
       {/* Flèche qui entre par la gauche */}
@@ -66,14 +71,16 @@ export function CtaButton({
       <span
         aria-hidden
         className="absolute -z-10 size-[22rem] scale-0 rounded-full bg-cta
-                   transition-transform duration-[800ms]
+                   transition-transform duration-[160ms]
                    ease-[cubic-bezier(0.23,1,0.32,1)]
+                   group-hover:duration-[240ms]
                    hoverable:group-hover:scale-100"
       />
 
       <span
-        className="relative -translate-x-3 transition-transform duration-[800ms]
+        className="relative -translate-x-3 transition-transform duration-[160ms]
                    ease-[cubic-bezier(0.23,1,0.32,1)]
+                   group-hover:duration-[240ms]
                    hoverable:group-hover:translate-x-3"
       >
         {children}

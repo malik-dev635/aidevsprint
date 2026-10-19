@@ -115,19 +115,67 @@ variantes oblige à reprendre les composants à la main.
 > Le brief initial mentionnait Laravel + MySQL. Arbitré en faveur de Strapi
 > le 2026-10-15 : l'admin est généré, et la stack reste en JavaScript.
 
-### Ce qu'il doit gérer
+### Types de contenu — créés le 2026-10-19
 
-| Entité | Contenu |
-|--------|---------|
-| **Édition** | date, heure, lieu, prix, quota, statut |
-| **Inscription** | nom, prénom, email, téléphone, niveau, attentes, statut |
-| **Paiement** | montant, référence, retours de la passerelle |
-| **Ticket** | QR code unique, vérification le jour J |
-| **Intervenant** | photo, rôle, ce qu'il transmet, liens |
+Écrits à la main dans `backend/src/api/<type>/content-types/<type>/schema.json`,
+pas cliqués dans l'admin : un schéma en JSON se relit, se diffe et se déploie.
 
-Au-delà des types de contenu générés, il faudra des **routes custom** :
-statistiques publiques (inscrits, places restantes), initiation de paiement,
-webhook de confirmation, vérification de ticket.
+| Type | Champs | Source |
+|------|--------|--------|
+| **Édition** | `numero`, `dateDebut`, `ville`, `lieu`, `prixFCFA`, `quota`, `inscrits`, `format` | transcription exacte du type `Edition` de `src/lib/edition.ts` |
+| **Formateur** | `prenom`, `nom`, `role`, `photo`, `badge`, `transmet`, `github`, `linkedin`, `ordre` | transcription exacte du type `Formateur` de `src/lib/formateurs.ts` |
+| **Inscription** | `nom`, `telephone`, `email`, `statut`, `montantFCFA`, `referencePaiement` | « nom, contact, paiement » de [CLAUDE.md](../CLAUDE.md#nature-du-site--décidé-le-2026-10-06) |
+
+Relations : `Édition 1–N Inscription`, `Édition N–N Formateur`.
+
+Deux ajouts au front qui n'y étaient pas, et pourquoi :
+
+- **`ordre`** sur Formateur — la section alterne gauche / droite / gauche.
+  Sans champ de tri, l'ordre d'affichage dépendrait de l'ordre de création
+  dans l'admin.
+- **`referencePaiement`** sur Inscription, en `private` — jamais renvoyé par
+  l'API REST, même si la permission de lecture est cochée.
+
+**Routes.** Édition et Formateur ont le routeur par défaut. Inscription n'expose
+que `POST /api/inscriptions` : le routeur par défaut aurait aussi ouvert la
+liste de tous les inscrits en lecture. L'admin ne passe pas par ces routes.
+
+#### Permissions — en code, pas cochées
+
+Le rôle « public » reçoit ses permissions dans `backend/src/index.ts`
+(`bootstrap`), pas par des cases cochées dans l'admin : une case cochée ne
+vit que dans la base locale, ne se relit pas dans une revue et ne suit pas
+en production. Le tableau `PERMISSIONS_PUBLIQUES` est la seule source.
+
+| Accordé au public | |
+|---|---|
+| `edition.find` · `edition.findOne` | le site lit l'édition courante |
+| `formateur.find` · `formateur.findOne` | le site lit les intervenants |
+| `inscription.create` | le formulaire envoie une demande |
+
+Jamais `inscription.find` : ce serait la liste publique de tous les inscrits
+avec leurs numéros de téléphone.
+
+#### Non créés, et pourquoi
+
+| Type | Ce qui bloque |
+|------|---------------|
+| **Paiement** | ses champs sont ceux que renvoie la passerelle. CinetPay n'est pas arrêté. |
+| **Ticket** | dépend de ce qui se passe après paiement — email, WhatsApp, billet ? Question encore ouverte dans CLAUDE.md. |
+| **Portfolio**, **Article** | entités listées comme « à préciser », jamais tranchées. |
+
+#### Questions ouvertes sur ces schémas
+
+- `inscrits` est un **champ saisi**, pas un comptage des inscriptions liées.
+  C'est volontaire tant que des places peuvent se vendre par WhatsApp — mais
+  si tout passe par le site, ce champ devient une seconde vérité qui va
+  diverger. À trancher.
+- `statut` d'une inscription vaut `en_attente` / `payee` / `annulee`. Trois
+  valeurs posées par défaut, pas validées.
+
+Au-delà des types de contenu, il faudra des **routes custom** : statistiques
+publiques (inscrits, places restantes), initiation de paiement, webhook de
+confirmation, vérification de ticket.
 
 ### Admin
 
@@ -190,6 +238,18 @@ npm run build    # build de production — c'est AUSSI le vrai typecheck
 npm start        # sert le build
 ```
 
+Back (`backend/`) :
+
+```bash
+cd backend
+npm run develop              # admin sur http://localhost:1337/admin
+npx strapi ts:generate-types # régénère types/generated — valide aussi les schémas
+npm run build && npm start   # production
+```
+
+> Le tout premier `npm run develop` demande de créer le compte administrateur.
+> Il n'existe pas encore.
+
 > `npx tsc --noEmit` seul échoue sur `LayoutProps` : ce type global est généré
 > par Next dans `.next/types`. Le typecheck qui fait foi est celui de
 > `npm run build`.
@@ -232,6 +292,13 @@ que Next 16 a des ruptures d'API et qu'il faut lire
 
 Une ligne par décision structurante, la plus récente en haut.
 
+- **2026-10-19** — **Strapi 5.58 installé** dans `backend/`, SQLite. Trois types
+  de contenu créés : Édition, Formateur, Inscription. Paiement, Ticket,
+  Portfolio et Article restent non modélisés : leurs champs dépendent de
+  décisions non prises. Permissions du rôle public posées en
+  code dans `src/index.ts`. Serveur démarré, tables créées, API vérifiée :
+  `GET /api/editions` et `/api/formateurs` répondent 200, `GET /api/inscriptions`
+  répond 404 — la route n'existe pas, par construction.
 - **2026-10-15** — **Design system figé** depuis l'affiche : couleurs mesurées
   au pixel, Inter + JetBrains Mono, aucune ombre, dégradé signature limité à
   4 emplacements. Voir [design.md](design.md#tokens).

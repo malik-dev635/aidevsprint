@@ -8,7 +8,6 @@ import { MenuPleinEcran } from "./MenuPleinEcran";
 const ANCRES = [
   { href: "#programme", label: "Programme" },
   { href: "#formateurs", label: "Formateurs" },
-  { href: "#tarif", label: "Tarif" },
   { href: "#faq", label: "FAQ" },
 ] as const;
 
@@ -53,7 +52,11 @@ export function Navbar({
       <div ref={sentinelle} aria-hidden className="absolute top-0 h-20 w-full" />
 
       {/* L'en-tête ne peint rien : seule la capsule a un fond. */}
-      <header className="fixed inset-x-0 top-0 z-50">
+      <header
+        className={`fixed inset-x-0 top-0 z-50 transition-colors duration-300
+                    ease-[cubic-bezier(0.23,1,0.32,1)]
+                    ${depasseHero ? "border-b border-fg/10 bg-bg/90 backdrop-blur-xl" : ""}`}
+      >
         {/* L'encoche : sans ce padding, la capsule passe dessous. */}
         <div className="shell pb-4 pt-[calc(1rem+env(safe-area-inset-top,0rem))]">
           <nav
@@ -73,7 +76,11 @@ export function Navbar({
               className={`hidden items-center gap-1 rounded-pill border
                           border-fg/15 p-1 backdrop-blur-xl transition-colors
                           duration-300 ease-[cubic-bezier(0.23,1,0.32,1)]
-                          lg:flex ${depasseHero ? "bg-bg/85" : "bg-bg/60"}`}
+                          lg:flex ${
+                            depasseHero
+                              ? "border-transparent bg-transparent backdrop-blur-none"
+                              : "bg-bg/60"
+                          }`}
             >
               {ANCRES.map(({ href, label }) => (
                 <li key={href}>

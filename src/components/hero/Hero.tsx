@@ -1,17 +1,21 @@
 import Aurora from "@/components/backgrounds/Aurora";
 import { CtaButton } from "@/components/ui/CtaButton";
-import { CartesFormateurs } from "./CartesFormateurs";
 import { CountdownFlip } from "./CountdownFlip";
+import { ModulesProgramme } from "./ModulesProgramme";
 import { SeatsGauge } from "./SeatsGauge";
-import { CHAMPS_PROVISOIRES, type Edition } from "@/lib/edition";
-import { FORMATEURS } from "@/lib/formateurs";
+import { A_DETERMINER, CHAMPS_PROVISOIRES, type Edition } from "@/lib/edition";
 
 /**
  * Hero — direction C : le compte à rebours EST le hero.
  *
- * Pas un panneau d'informations. Trois choses seulement : les chiffres,
- * la phrase, l'action. Le lieu, le prix et le niveau vivent plus bas
- * dans la page, pas ici.
+ * Pas un panneau d'informations. Les chiffres, la phrase, ce qu'on vend
+ * et où, puis l'action. Rien d'autre : le prix et le niveau vivent plus bas.
+ *
+ * La ligne « Formation · durée · lieu » a été ajoutée le 2026-10-19 : la
+ * page ne disait nulle part qu'il s'agissait d'une formation. Un visiteur
+ * voyait un compte à rebours et une promesse, sans savoir ce qu'on lui
+ * vendait. Elle est passée sous le titre le même jour : au-dessus des
+ * chiffres, elle tombait derrière la capsule de la navbar.
  */
 export function Hero({ edition }: { edition: Edition }) {
   return (
@@ -42,7 +46,7 @@ export function Hero({ edition }: { edition: Edition }) {
         {/* ── Le bloc qui porte tout le hero ───────────────────────── */}
         <div className="flex flex-1 items-center justify-between gap-[clamp(2rem,4vw,5rem)] py-[clamp(0.5rem,3svh,3rem)]">
           <div
-            className="flex flex-1 flex-col justify-center
+            className="flex min-w-0 flex-1 flex-col justify-center
                        gap-[clamp(1rem,4.5svh,3.5rem)]"
           >
             <CountdownFlip dateDebut={edition.dateDebut} />
@@ -61,6 +65,25 @@ export function Hero({ edition }: { edition: Edition }) {
             .
           </h1>
 
+          {/* Ce qu'on vend : la nature, la durée, l'endroit. Sous le titre
+              et non au-dessus des chiffres — en haut la ligne passait sous
+              la capsule de la navbar et ne se lisait pas. */}
+          <p className="flex flex-wrap items-baseline gap-x-[1.5ch] gap-y-2 font-mono text-small">
+            <span className="uppercase tracking-[0.25em] text-accent">
+              Formation
+            </span>
+            <span aria-hidden className="text-fg/25">
+              ·
+            </span>
+            <span className="text-fg/70">{edition.format}</span>
+            <span aria-hidden className="text-fg/25">
+              ·
+            </span>
+            <span className={edition.lieu ? "text-fg/70" : "text-accent/70"}>
+              {edition.lieu ?? A_DETERMINER}
+            </span>
+          </p>
+
           {/* ── Action, et l'urgence juste à côté ──────────────────── */}
             <div className="flex flex-col gap-8 lg:flex-row lg:items-center lg:gap-12">
             <CtaButton href="#inscription">Réserver ma place</CtaButton>
@@ -73,9 +96,9 @@ export function Hero({ edition }: { edition: Edition }) {
             </div>
           </div>
 
-          {/* Les trois intervenants, à droite. Visible à partir de xl :
+          {/* Les 4 temps de la journée. Visible à partir de xl :
               en dessous, le compte à rebours garde toute la largeur. */}
-          <CartesFormateurs formateurs={FORMATEURS} />
+          <ModulesProgramme />
         </div>
 
         {/* Tant que le back n'existe pas, on dit quelles données affichées

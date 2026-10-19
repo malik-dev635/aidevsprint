@@ -14,7 +14,11 @@
 @theme {
   /* Couleurs */
   --color-bg: #010101;
-  --color-surface: #010f06;
+  /* Trois fonds, tous très sombres, dérivés des deux teintes de l'affiche.
+     Les sections alternent : sans ça tout se fond en un seul bloc noir et
+     l'œil ne voit plus où une section finit. */
+  --color-surface: #010f06; /* vert très sombre — la carte infos de l'affiche */
+  --color-surface-blue: #01060f; /* bleu très sombre — la lueur du bas */
   --color-fg: #ffffff;
   --color-accent: #2ee66b;
   --color-cta: #0b63f6;
