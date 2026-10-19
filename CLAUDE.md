@@ -47,7 +47,7 @@ Trois conséquences directes :
 
 1. **Un back-office est nécessaire** — pour les éditions, les inscriptions et
    les paiements. Ce n'est plus optionnel. Voir
-   [docs/stack.md](docs/stack.md#backend--non-tranché).
+   [docs/stack.md](docs/stack.md#backend--laravel).
 2. **Le paiement passe par le mobile money**, pas par une passerelle
    internationale. Voir [docs/stack.md](docs/stack.md#paiement).
 3. **Des données personnelles sont collectées** — nom, contact, paiement.
@@ -65,7 +65,7 @@ Trois conséquences directes :
 **Statut :** design system figé depuis l'affiche. Rien n'est encore installé.
 
 **Stack :** Next.js 16 · TypeScript · Tailwind 4 · GSAP + Lenis · React Bits (`TS-TW`).
-Back : **Strapi** — voir [docs/stack.md](docs/stack.md#backend--strapi).
+Back : **Laravel 13 + Filament** · MySQL — voir [docs/stack.md](docs/stack.md#backend--laravel).
 Détail et points ouverts dans [docs/stack.md](docs/stack.md).
 
 ## Docs

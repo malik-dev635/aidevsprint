@@ -1,5 +1,5 @@
 /**
- * ⚠️  DONNÉES PROVISOIRES — À REMPLACER PAR L'API STRAPI
+ * ⚠️  DONNÉES PROVISOIRES — À REMPLACER PAR L'API (Laravel, pas encore écrite)
  *
  * Ce fichier n'existe que pour pouvoir afficher et animer le hero avant que
  * le back ne soit en place. Aucune valeur marquée provisoire n'est réelle.
