@@ -6,7 +6,8 @@ import { CtaButton } from "@/components/ui/CtaButton";
 import { MenuPleinEcran } from "./MenuPleinEcran";
 
 const ANCRES = [
-  { href: "#programme", label: "Programme" },
+  { href: "#methode", label: "Méthode" },
+  { href: "#parcours", label: "Parcours" },
   { href: "#formateurs", label: "Formateurs" },
   { href: "#faq", label: "FAQ" },
 ] as const;

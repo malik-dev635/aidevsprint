@@ -1,85 +1,95 @@
-const CONTRE = [
-  "Copier-coller sans comprendre",
-  "Code fragile",
-  "Failles de sécurité",
-];
-
-const POUR = [
-  "Prompts structurés",
-  "Dossier .md de contexte",
-  "Skills et revue de code",
-  "Bases solides du développement",
-];
+import { EtiquetteSection } from "@/components/ui/EtiquetteSection";
 
 /**
- * Section 2 — le problème et la promesse.
+ * Section — le problème.
  *
- * Composition volontairement déséquilibrée : la colonne « sans méthode »
- * est plus étroite, éteinte, barrée ; celle de la méthode est plus large et
- * porte l'accent.
+ * Transcription du design `Landing — ai-dev-sprint.com@2x.png`.
+ * Deux colonnes qui s'opposent : ce qui arrive sans méthode à gauche, ce
+ * que fait AIdevsprint à droite. Le contraste porte tout le propos, donc
+ * les deux cartes ne reçoivent pas le même traitement — la carte de
+ * droite est bordée d'accent et éclairée par en dessous.
  *
- * Le libellé ne juge pas le lecteur. « Le vibe coding bête » figurait dans
- * le brief comme description interne du contraste, pas comme texte à
- * afficher : sur le site, ça insulte ceux qu'on veut inscrire. Le contraste est dans la mise en page, pas dans un libellé
- * « avant / après ».
- *
- * Les formulations viennent du brief de Malik, mot pour mot. Rien d'inventé :
- * ce qui manque est marqué [À COMPLÉTER] et visible à l'écran.
+ * La lueur verte n'est pas une ombre : c'est une source de lumière
+ * derrière la carte, le seul effet de profondeur autorisé par
+ * docs/design.md.
  */
+
+const SANS_METHODE = [
+  "Un prompt vague, un code fragile",
+  "Des failles que personne ne voit",
+  "Du copier-coller qu'on ne comprend pas",
+  "Un projet qui casse à la première modif",
+];
+
+const AVEC_METHODE = [
+  "Un contexte projet clair que l'IA respecte",
+  "Des checks sécurité systématiques",
+  "Tu relis, tu comprends, tu décides",
+  "Un projet propre, maintenable, en ligne",
+];
+
 export function Probleme() {
   return (
-    <section id="probleme" className="relative bg-surface py-[clamp(4rem,12svh,9rem)]">
+    <section id="probleme" className="relative py-[clamp(4rem,12svh,9rem)]">
       <div className="shell">
-        <h2 className="max-w-[18ch] text-h1 font-bold leading-[1.05] tracking-tighter">
-          L&apos;IA amplifie un développeur{" "}
-          <span className="text-accent">qui sait ce qu&apos;il fait</span>.
+        <EtiquetteSection>le problème</EtiquetteSection>
+
+        <h2 className="mt-[clamp(1rem,3svh,2rem)] max-w-[20ch] text-h1 font-bold leading-[1.05] tracking-tighter">
+          L&apos;IA écrit vite. Sans méthode, elle écrit n&apos;importe quoi.
         </h2>
 
-        <div className="mt-[clamp(2.5rem,7svh,5rem)] grid gap-10 lg:grid-cols-[4fr_6fr] lg:gap-16">
-          {/* ── Ce qu'on refuse ─────────────────────────────── */}
-          <div className="flex flex-col gap-5 border-l-2 border-fg/15 pl-6">
-            <p className="font-mono text-small uppercase tracking-[0.25em] text-fg/40">
-              Sans méthode
-            </p>
-            <ul className="flex flex-col gap-3">
-              {CONTRE.map((item) => (
-                <li
-                  key={item}
-                  className="text-h3 font-semibold leading-tight text-fg/35 line-through
-                             decoration-fg/25 decoration-2"
-                >
-                  {item}
+        <div className="mt-[clamp(2.5rem,8svh,5rem)] grid gap-[clamp(1rem,2vw,1.5rem)] lg:grid-cols-2">
+          {/* Sans méthode — volontairement terne : c'est le repoussoir. */}
+          <div
+            className="rounded-card border border-fg/10 bg-fg/[0.03]
+                       p-[clamp(1.5rem,3.5vw,2.75rem)]"
+          >
+            <h3 className="text-h3 font-bold tracking-tight text-fg/60">
+              Vibe coding à l&apos;aveugle
+            </h3>
+
+            <ul className="mt-[clamp(1.5rem,4svh,2.5rem)] flex flex-col gap-[clamp(0.875rem,2svh,1.25rem)]">
+              {SANS_METHODE.map((ligne) => (
+                <li key={ligne} className="flex gap-[1ch] text-body text-fg/70">
+                  <span aria-hidden className="text-fg/40">
+                    ✕
+                  </span>
+                  {ligne}
                 </li>
               ))}
             </ul>
           </div>
 
-          {/* ── Ce qu'on enseigne ───────────────────────────── */}
-          <div className="flex flex-col gap-5 border-l-2 border-accent pl-6">
-            <p className="font-mono text-small uppercase tracking-[0.25em] text-accent">
+          {/* La méthode — bordée d'accent, éclairée par en dessous. */}
+          <div
+            className="relative isolate overflow-hidden rounded-card
+                       border border-accent/60 p-[clamp(1.5rem,3.5vw,2.75rem)]"
+          >
+            <span
+              aria-hidden
+              className="pointer-events-none absolute inset-0 -z-10"
+              style={{
+                backgroundImage:
+                  "radial-gradient(90% 110% at 20% 120%, color-mix(in oklab, var(--color-glow-green) 55%, transparent) 0%, transparent 65%)",
+              }}
+            />
+
+            <h3 className="text-h3 font-bold tracking-tight text-accent">
               La méthode AIdevsprint
-            </p>
-            <ul className="flex flex-col gap-3">
-              {POUR.map((item) => (
-                <li
-                  key={item}
-                  className="text-h2 font-bold leading-tight tracking-tight text-fg"
-                >
-                  {item}
+            </h3>
+
+            <ul className="mt-[clamp(1.5rem,4svh,2.5rem)] flex flex-col gap-[clamp(0.875rem,2svh,1.25rem)]">
+              {AVEC_METHODE.map((ligne) => (
+                <li key={ligne} className="flex gap-[1ch] text-body text-fg">
+                  <span aria-hidden className="text-accent">
+                    ✓
+                  </span>
+                  {ligne}
                 </li>
               ))}
             </ul>
-            <p className="mt-2 max-w-[48ch] text-body text-fg/70">
-              Guide l&apos;IA avec tes compétences de dev : livre des projets
-              plus vite, avec plus de fonctionnalités.
-            </p>
           </div>
         </div>
-
-        <p className="mt-[clamp(2rem,5svh,3.5rem)] font-mono text-small text-accent/70">
-          [À COMPLÉTER] — exemples concrets : extrait de prompt, fichier de
-          contexte, avant/après sur un vrai bout de code.
-        </p>
       </div>
     </section>
   );
