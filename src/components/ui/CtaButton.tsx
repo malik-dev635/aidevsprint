@@ -26,11 +26,17 @@ const Fleche = ({ className }: { className: string }) => (
 /**
  * Bouton d'action principal. Un seul composant, utilisé partout.
  *
- * Au repos : contour bleu, texte blanc, fond transparent.
- * Au survol : un disque bleu se déploie depuis le centre et remplit le
- * bouton, le texte glisse vers la droite, la flèche sort par la droite
- * pendant qu'une seconde entre par la gauche. La capsule reste pleinement
- * arrondie, au repos comme au survol.
+ * Au repos : bleu plein, texte blanc. Le contour transparent des premières
+ * versions a été abandonné le 2026-10-20 — le design ne montre aucun bouton
+ * en contour comme action principale, partout c'est une pilule pleine dont
+ * la couleur contraste avec son fond.
+ *
+ * Au survol : un disque bleu plus sombre se déploie depuis le centre, le
+ * texte glisse vers la droite, la flèche sort par la droite pendant qu'une
+ * seconde entre par la gauche. La capsule reste pleinement arrondie.
+ *
+ * Le disque s'assombrit au lieu d'apparaître : sur un fond déjà bleu, un
+ * disque de la même teinte ne se verrait pas.
  *
  * Le texte reste blanc au repos comme au survol : du bleu sur l'aurore
  * bleue serait illisible, c'était le défaut de la première version.
@@ -59,7 +65,7 @@ export function CtaButton({
       className={`group relative isolate inline-flex shrink-0 items-center
                   ${pleineLargeur ? "w-full" : "w-fit"}
                   justify-center overflow-hidden rounded-pill
-                  border-2 border-cta font-bold text-fg
+                  border-2 border-cta bg-cta font-bold text-fg
                   transition-transform duration-[120ms]
                   ease-[cubic-bezier(0.23,1,0.32,1)] active:scale-[0.96]
                   ${dimensions} ${className}`}
@@ -70,7 +76,8 @@ export function CtaButton({
       {/* Le disque qui remplit. -z-10 : il passe derrière le texte. */}
       <span
         aria-hidden
-        className="absolute -z-10 size-[22rem] scale-0 rounded-full bg-cta
+        className="absolute -z-10 size-[22rem] scale-0 rounded-full
+                   bg-[color-mix(in_oklab,var(--color-cta)_60%,black)]
                    transition-transform duration-[160ms]
                    ease-[cubic-bezier(0.23,1,0.32,1)]
                    group-hover:duration-[240ms]
