@@ -2,9 +2,10 @@
 
 import Image from "next/image";
 
-import Lanyard from "@/components/Lanyard";
+import { BadgeSuspendu } from "@/components/formateurs/BadgeSuspendu";
 import TextType from "@/components/TextType";
 import { FORMATEURS, type Formateur } from "@/lib/formateurs";
+import { Reveal } from "@/components/motion/Reveal";
 
 /**
  * Section — les trois intervenants, un par un.
@@ -16,6 +17,10 @@ import { FORMATEURS, type Formateur } from "@/lib/formateurs";
  *
  * Sous `lg`, le badge devient une simple image : même visuel, aucun
  * contexte WebGL sur un téléphone.
+ *
+ * Et au-dessus de `lg`, les trois badges ne se montent plus ensemble : voir
+ * `BadgeSuspendu`, qui attend que la rangée approche. Trois scènes Three.js
+ * démarrant au chargement de la page, c'était le vrai coût de cette section.
  *
  * Ce que transmettent Youssouf et Malik vient du brief, mot pour mot.
  * Celui de Victorien et les liens ne sont pas fournis : [À COMPLÉTER].
@@ -61,7 +66,7 @@ function Profil({
           badgeADroite ? "lg:order-2" : "lg:order-1"
         }`}
       >
-        <Lanyard
+        <BadgeSuspendu
           frontImage={formateur.badge}
           imageFit="cover"
           cardColor="#010F06"
@@ -122,7 +127,7 @@ function Profil({
 export function Formateurs() {
   return (
     <section id="formateurs" className="relative py-[clamp(4rem,12svh,9rem)]">
-      <div className="shell">
+      <Reveal className="shell">
         <div className="flex flex-col items-center text-center">
           <p className="font-mono text-small uppercase tracking-[0.25em] text-accent">
             Les formateurs
@@ -149,7 +154,7 @@ export function Formateurs() {
             <Profil key={f.prenom} formateur={f} index={i} />
           ))}
         </div>
-      </div>
+      </Reveal>
     </section>
   );
 }

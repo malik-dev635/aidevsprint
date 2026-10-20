@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Reveal } from "@/components/motion/Reveal";
 
 /**
  * Section — la dernière relance.
@@ -30,7 +31,7 @@ export function CtaFinal() {
         }}
       />
 
-      <div className="shell flex flex-col items-center text-center">
+      <Reveal className="shell flex flex-col items-center text-center">
         <h2 className="max-w-[22ch] text-h1 font-bold leading-[1.05] tracking-tighter">
           Prêt à coder <em>proprement</em> avec l&apos;IA ?
         </h2>
@@ -45,7 +46,7 @@ export function CtaFinal() {
         >
           Réserver ma place
         </Link>
-      </div>
+      </Reveal>
     </section>
   );
 }

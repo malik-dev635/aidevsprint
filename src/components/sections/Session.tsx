@@ -3,6 +3,7 @@ import Link from "next/link";
 import { CtaButton } from "@/components/ui/CtaButton";
 import { EtiquetteSection } from "@/components/ui/EtiquetteSection";
 import { A_DETERMINER, type Edition } from "@/lib/edition";
+import { Reveal } from "@/components/motion/Reveal";
 
 /**
  * Section — la session #1.
@@ -94,7 +95,7 @@ export function Session({ edition }: { edition: Edition }) {
         }}
       />
 
-      <div className="shell">
+      <Reveal className="shell">
         <div className="grid gap-[clamp(2.5rem,6svh,4rem)] lg:grid-cols-2 lg:items-center lg:gap-[clamp(2rem,5vw,5rem)]">
           <div>
             <EtiquetteSection>
@@ -209,7 +210,7 @@ export function Session({ edition }: { edition: Edition }) {
             </div>
           </div>
         </div>
-      </div>
+      </Reveal>
     </section>
   );
 }

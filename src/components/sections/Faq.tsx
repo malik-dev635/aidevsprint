@@ -1,4 +1,5 @@
 import { EtiquetteSection } from "@/components/ui/EtiquetteSection";
+import { Reveal } from "@/components/motion/Reveal";
 
 /**
  * Section — questions fréquentes.
@@ -38,7 +39,7 @@ const QUESTIONS: { question: string; reponse: string | null }[] = [
 export function Faq() {
   return (
     <section id="faq" className="relative py-[clamp(4rem,12svh,9rem)]">
-      <div className="shell">
+      <Reveal className="shell">
         {/* La FAQ se lit en colonne étroite : une réponse qui court sur
             120 caractères oblige l'œil à revenir trop loin à chaque ligne.
             Le bloc est décalé comme dans le design, pas centré. */}
@@ -67,7 +68,7 @@ export function Faq() {
             ))}
           </dl>
         </div>
-      </div>
+      </Reveal>
     </section>
   );
 }

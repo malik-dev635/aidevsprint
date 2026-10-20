@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
+
+import { ScrollFluide } from "@/components/motion/ScrollFluide";
 import "./globals.css";
 
 const inter = Inter({
@@ -49,7 +51,11 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="fr"
       className={`${inter.variable} ${jetbrainsMono.variable} h-full`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        {/* Branche Lenis sur GSAP, une seule fois pour tout le site. */}
+        <ScrollFluide />
+        {children}
+      </body>
     </html>
   );
 }

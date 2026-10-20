@@ -1,4 +1,5 @@
 import { EtiquetteSection } from "@/components/ui/EtiquetteSection";
+import { Reveal } from "@/components/motion/Reveal";
 
 /**
  * Section — la méthode.
@@ -45,7 +46,7 @@ export function Methode() {
       id="methode"
       className="relative bg-surface py-[clamp(4rem,12svh,9rem)]"
     >
-      <div className="shell">
+      <Reveal className="shell">
         <EtiquetteSection>la méthode</EtiquetteSection>
 
         <h2 className="mt-[clamp(1rem,3svh,2rem)] max-w-[18ch] text-h1 font-bold leading-[1.05] tracking-tighter">
@@ -86,7 +87,7 @@ export function Methode() {
             </li>
           ))}
         </ul>
-      </div>
+      </Reveal>
     </section>
   );
 }

@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { EtiquetteSection } from "@/components/ui/EtiquetteSection";
+import { Reveal } from "@/components/motion/Reveal";
 
 /**
  * Section — le parcours.
@@ -106,7 +107,7 @@ function CarteSession({ numero, titre, texte, ouverte }: Session) {
 export function Parcours() {
   return (
     <section id="parcours" className="relative py-[clamp(4rem,12svh,9rem)]">
-      <div className="shell">
+      <Reveal className="shell">
         <EtiquetteSection>le parcours</EtiquetteSection>
 
         <h2 className="mt-[clamp(1rem,3svh,2rem)] max-w-[20ch] text-h1 font-bold leading-[1.05] tracking-tighter">
@@ -122,7 +123,7 @@ export function Parcours() {
             <CarteSession key={session.numero} {...session} />
           ))}
         </ul>
-      </div>
+      </Reveal>
     </section>
   );
 }
