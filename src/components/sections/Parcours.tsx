@@ -1,5 +1,4 @@
-import Link from "next/link";
-
+import { CtaButton } from "@/components/ui/CtaButton";
 import { EtiquetteSection } from "@/components/ui/EtiquetteSection";
 import { Reveal } from "@/components/motion/Reveal";
 
@@ -10,6 +9,11 @@ import { Reveal } from "@/components/motion/Reveal";
  * Les quatre sessions du parcours. Une seule est ouverte : elle est en
  * vert plein, les trois autres restent en creux. L'écart de traitement
  * fait tout le travail — inutile de barrer ou de griser.
+ *
+ * Le bouton de la carte ouverte était une pilule noire, reprise du design.
+ * Malik a tranché le 2026-10-20 : « Réserver ma place » doit être le même
+ * bouton partout, animation comprise. Le design perd donc ici sa pilule
+ * noire sur fond vert, au profit de la cohérence du site.
  *
  * Les descriptions des sessions 2 à 4 ne sont pas écrites. Le design
  * portait lui-même des `[DESCRIPTION SESSION #N]` : ce sont des trous
@@ -65,16 +69,12 @@ function CarteSession({ numero, titre, texte, ouverte }: Session) {
           className="min-h-[clamp(1.5rem,4svh,3rem)] flex-1"
         />
 
-        <Link
-          href="#inscription"
-          className="inline-flex w-fit items-center rounded-pill
-                     bg-bg px-[clamp(1.25rem,2vw,1.75rem)]
-                     py-[clamp(0.625rem,1.6svh,0.875rem)] text-body font-bold
-                     text-fg transition-transform duration-[120ms]
-                     ease-[var(--ease-out-strong)] active:scale-[0.96]"
-        >
+        {/* Le même bouton que partout ailleurs, taille `sm` : la carte
+            est l'une de quatre sur une rangée, elle n'a pas la place du
+            format du hero. Le libellé reste court pour la même raison. */}
+        <CtaButton href="#inscription" taille="sm">
           Réserver
-        </Link>
+        </CtaButton>
       </li>
     );
   }
