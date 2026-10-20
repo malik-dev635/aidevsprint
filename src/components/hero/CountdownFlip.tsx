@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
 
@@ -74,10 +74,29 @@ function Groupe({ valeur, label }: { valeur: string; label: string }) {
           <Chiffre key={i} valeur={c} />
         ))}
       </div>
-      <span className="font-mono text-small font-bold uppercase tracking-[0.25em] text-accent">
+      <span className="font-mono text-small font-bold uppercase tracking-[0.25em] text-fg">
         {label}
       </span>
     </div>
+  );
+}
+
+/**
+ * Le deux-points entre deux groupes.
+ *
+ * Même taille et même interligne que les chiffres, donc il s'aligne tout
+ * seul sur eux et non sur les libellés — la rangée est en `items-start`.
+ * Blanc à 30 % : il sépare sans se disputer la lecture avec les nombres.
+ */
+function Separateur() {
+  return (
+    <span
+      aria-hidden
+      className="font-mono font-bold leading-[0.85] tracking-tighter
+                 text-[length:var(--text-countdown)] text-fg/30"
+    >
+      :
+    </span>
   );
 }
 
@@ -96,17 +115,28 @@ export function CountdownFlip({ dateDebut }: { dateDebut: string | null }) {
     return () => clearInterval(id);
   }, [dateDebut]);
 
+  const groupes = [
+    { valeur: parts.j, label: "jours" },
+    { valeur: parts.h, label: "heures" },
+    { valeur: parts.m, label: "min" },
+    { valeur: parts.s, label: "sec" },
+  ];
+
   return (
     <div
-      className="flex items-start gap-5 sm:gap-8 lg:gap-12"
+      // L'écart se resserre par rapport à l'ancienne version : ce sont les
+      // deux-points qui séparent maintenant, plus le vide.
+      className="flex items-start gap-2 sm:gap-3 lg:gap-4"
       role="timer"
       aria-live="off"
       aria-label="Temps restant avant le début de la formation"
     >
-      <Groupe valeur={parts.j} label="jours" />
-      <Groupe valeur={parts.h} label="heures" />
-      <Groupe valeur={parts.m} label="min" />
-      <Groupe valeur={parts.s} label="sec" />
+      {groupes.map(({ valeur, label }, i) => (
+        <Fragment key={label}>
+          {i > 0 && <Separateur />}
+          <Groupe valeur={valeur} label={label} />
+        </Fragment>
+      ))}
     </div>
   );
 }

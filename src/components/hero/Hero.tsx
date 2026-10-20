@@ -1,9 +1,10 @@
 import Aurora from "@/components/backgrounds/Aurora";
+import { CarteInfos } from "./CarteInfos";
 import { CtaButton } from "@/components/ui/CtaButton";
 import { CountdownFlip } from "./CountdownFlip";
 import { ModulesProgramme } from "./ModulesProgramme";
 import { SeatsGauge } from "./SeatsGauge";
-import { A_DETERMINER, CHAMPS_PROVISOIRES, type Edition } from "@/lib/edition";
+import { CHAMPS_PROVISOIRES, type Edition } from "@/lib/edition";
 
 /**
  * Hero — direction C : le compte à rebours EST le hero.
@@ -15,7 +16,9 @@ import { A_DETERMINER, CHAMPS_PROVISOIRES, type Edition } from "@/lib/edition";
  * page ne disait nulle part qu'il s'agissait d'une formation. Un visiteur
  * voyait un compte à rebours et une promesse, sans savoir ce qu'on lui
  * vendait. Elle est passée sous le titre le même jour : au-dessus des
- * chiffres, elle tombait derrière la capsule de la navbar.
+ * chiffres, elle tombait derrière la capsule de la navbar. Le 2026-10-20
+ * elle est devenue `CarteInfos` — en texte courant, ces trois faits se
+ * lisaient comme une légende plutôt que comme l'offre.
  */
 export function Hero({ edition }: { edition: Edition }) {
   return (
@@ -68,21 +71,7 @@ export function Hero({ edition }: { edition: Edition }) {
           {/* Ce qu'on vend : la nature, la durée, l'endroit. Sous le titre
               et non au-dessus des chiffres — en haut la ligne passait sous
               la capsule de la navbar et ne se lisait pas. */}
-          <p className="flex flex-wrap items-baseline gap-x-[1.5ch] gap-y-2 font-mono text-small">
-            <span className="uppercase tracking-[0.25em] text-accent">
-              Formation
-            </span>
-            <span aria-hidden className="text-fg/25">
-              ·
-            </span>
-            <span className="text-fg/70">{edition.format}</span>
-            <span aria-hidden className="text-fg/25">
-              ·
-            </span>
-            <span className={edition.lieu ? "text-fg/70" : "text-accent/70"}>
-              {edition.lieu ?? A_DETERMINER}
-            </span>
-          </p>
+          <CarteInfos edition={edition} />
 
           {/* ── Action, et l'urgence juste à côté ──────────────────── */}
             <div className="flex flex-col gap-8 lg:flex-row lg:items-center lg:gap-12">
