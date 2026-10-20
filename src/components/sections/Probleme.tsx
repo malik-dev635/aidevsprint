@@ -1,11 +1,20 @@
 import { EtiquetteSection } from "@/components/ui/EtiquetteSection";
+import { Reveal } from "@/components/motion/Reveal";
 
 /**
  * Section — le problème.
  *
  * Transcription du design `Landing — ai-dev-sprint.com@2x.png`.
  * Deux colonnes qui s'opposent : ce qui arrive sans méthode à gauche, ce
- * que fait AIdevsprint à droite. Le contraste porte tout le propos, donc
+ * que fait AIdevsprint à droite.
+ *
+ * Le titre s'écarte du design, décidé par Malik le 2026-10-20. Le design
+ * disait « L'IA écrit vite. Sans méthode, elle écrit n'importe quoi. » :
+ * « écrit » y revenait deux fois, « n'importe quoi » ne nommait aucune
+ * conséquence, et surtout la phrase accusait l'outil — alors que
+ * docs/design.md pose l'inverse, « on s'oppose au vibe coding bête, pas à
+ * l'IA ». Le nouveau titre reproche à l'IA d'obéir toujours, pas d'être
+ * mauvaise : c'est ce qui justifie une méthode. Le contraste porte tout le propos, donc
  * les deux cartes ne reçoivent pas le même traitement — la carte de
  * droite est bordée d'accent et éclairée par en dessous.
  *
@@ -31,11 +40,18 @@ const AVEC_METHODE = [
 export function Probleme() {
   return (
     <section id="probleme" className="relative py-[clamp(4rem,12svh,9rem)]">
-      <div className="shell">
+      <Reveal className="shell">
         <EtiquetteSection>le problème</EtiquetteSection>
 
-        <h2 className="mt-[clamp(1rem,3svh,2rem)] max-w-[20ch] text-h1 font-bold leading-[1.05] tracking-tighter">
-          L&apos;IA écrit vite. Sans méthode, elle écrit n&apos;importe quoi.
+        {/* Chaque phrase sur sa ligne : en laissant le texte se couper
+            tout seul, « C'est » remontait sur la première ligne et la
+            bascule entre le constat et la chute se perdait. */}
+        <h2
+          className="mt-[clamp(1rem,3svh,2rem)] max-w-[30ch] text-h1
+                     font-bold leading-[1.05] tracking-tighter"
+        >
+          <span className="block">L&apos;IA ne dit jamais non.</span>
+          <span className="block">C&apos;est exactement le problème.</span>
         </h2>
 
         <div className="mt-[clamp(2.5rem,8svh,5rem)] grid gap-[clamp(1rem,2vw,1.5rem)] lg:grid-cols-2">
@@ -90,7 +106,7 @@ export function Probleme() {
             </ul>
           </div>
         </div>
-      </div>
+      </Reveal>
     </section>
   );
 }
