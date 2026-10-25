@@ -1,5 +1,4 @@
-type Props = {
-  href: string;
+type Commun = {
   children: React.ReactNode;
   /** `sm` pour la navbar, `lg` pour le hero. */
   taille?: "sm" | "lg";
@@ -7,6 +6,23 @@ type Props = {
   pleineLargeur?: boolean;
   className?: string;
 };
+
+/** Un lien : le cas courant, et le seul jusqu'au 2026-10-25. */
+type EnLien = Commun & {
+  href: string;
+  type?: never;
+  disabled?: never;
+};
+
+/** Un bouton : même pilule, même survol, mais il agit au lieu de mener. */
+type EnBouton = Commun & {
+  href?: never;
+  type: "submit" | "button";
+  disabled?: boolean;
+  onClick?: () => void;
+};
+
+type Props = EnLien | EnBouton;
 
 const Fleche = ({ className }: { className: string }) => (
   <svg
@@ -32,6 +48,13 @@ const Fleche = ({ className }: { className: string }) => (
  * pendant qu'une seconde entre par la gauche. La capsule reste pleinement
  * arrondie, au repos comme au survol.
  *
+ * Il rend un `<a>` quand on lui donne un `href`, un `<button>` quand on lui
+ * donne un `type`. Les « Réserver ma place » ouvrent la modale et sont donc
+ * des boutons (voir `BoutonReserver`), celui du formulaire soumet. Plutôt
+ * qu'une seconde pilule qui ressemble à celle-ci, c'est la même, avec la
+ * même animation. Malik l'a demandé le 2026-10-20 — un seul bouton
+ * « Réserver ma place » sur tout le site.
+ *
  * Essayé le 2026-10-20 et abandonné le même jour : le bleu plein au repos,
  * pour coller aux pilules pleines du design. Il obligeait à assombrir le
  * disque au survol — un disque du même bleu sur un fond déjà bleu ne se
@@ -46,11 +69,11 @@ const Fleche = ({ className }: { className: string }) => (
  * de largeur : seuls `transform` et `opacity` tournent sur le GPU.
  */
 export function CtaButton({
-  href,
   children,
   taille = "lg",
   pleineLargeur = false,
   className = "",
+  ...rendu
 }: Props) {
   // Les paddings verticaux suivent la hauteur disponible, comme le reste
   // du rythme du hero : sur un écran court le bouton se resserre au lieu
@@ -60,24 +83,31 @@ export function CtaButton({
       ? "px-7 py-[clamp(0.5rem,1.6svh,0.875rem)] text-small gap-1"
       : "px-10 py-[clamp(0.75rem,2.4svh,1.375rem)] text-body gap-1";
 
-  return (
-    <a
-      href={href}
-      className={`group relative isolate inline-flex shrink-0 items-center
-                  ${pleineLargeur ? "w-full" : "w-fit"}
-                  justify-center overflow-hidden rounded-pill
-                  border-2 border-cta font-bold text-fg
-                  transition-transform duration-[120ms]
-                  ease-[cubic-bezier(0.23,1,0.32,1)] active:scale-[0.96]
-                  ${dimensions} ${className}`}
-    >
+  const classes = `group relative isolate inline-flex shrink-0 items-center
+                   ${pleineLargeur ? "w-full" : "w-fit"}
+                   justify-center overflow-hidden rounded-pill
+                   border-2 border-cta font-bold text-fg
+                   transition-transform duration-[120ms]
+                   ease-[cubic-bezier(0.23,1,0.32,1)] active:scale-[0.96]
+                   disabled:cursor-not-allowed disabled:opacity-60
+                   ${dimensions} ${className}`;
+
+  const interieur = (
+    <>
       {/* Flèche qui entre par la gauche */}
       <Fleche className="-left-1/4 hoverable:group-hover:left-4" />
 
-      {/* Le disque qui remplit. -z-10 : il passe derrière le texte. */}
+      {/* Le disque qui remplit. -z-10 : il passe derrière le texte.
+
+          Sa taille suit celle du bouton au lieu d'être fixe : à 22rem, un
+          bouton en pleine largeur — le menu plein écran, le formulaire —
+          restait noir à ses deux bouts, le disque ne l'atteignait pas.
+          130 % de la largeur couvre la diagonale de n'importe quelle
+          pilule plus large que haute, ce qu'elles sont toutes. */}
       <span
         aria-hidden
-        className="absolute -z-10 size-[22rem] scale-0 rounded-full bg-cta
+        className="absolute -z-10 aspect-square w-[130%] scale-0
+                   rounded-full bg-cta
                    transition-transform duration-[160ms]
                    ease-[cubic-bezier(0.23,1,0.32,1)]
                    group-hover:duration-[240ms]
@@ -95,6 +125,25 @@ export function CtaButton({
 
       {/* Flèche qui sort par la droite */}
       <Fleche className="right-4 hoverable:group-hover:-right-1/4" />
-    </a>
+    </>
+  );
+
+  if (rendu.href !== undefined) {
+    return (
+      <a href={rendu.href} className={classes}>
+        {interieur}
+      </a>
+    );
+  }
+
+  return (
+    <button
+      type={rendu.type}
+      disabled={rendu.disabled}
+      onClick={rendu.onClick}
+      className={classes}
+    >
+      {interieur}
+    </button>
   );
 }

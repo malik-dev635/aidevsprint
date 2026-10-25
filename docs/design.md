@@ -331,9 +331,33 @@ Plage de fluidité : 375px → 1920px. Les deux polices sont sur Google Fonts.
 ```css
 --spacing: clamp(0.25rem, 0.22rem + 0.12vw, 0.34rem);
 --radius-card: 1.5rem;
+--radius-field: 0.625rem; /* champs de saisie — voir ci-dessous */
 --radius-pill: 9999px;   /* badges et boutons : capsule pleine */
 --breakpoint-3xl: 120rem;
 ```
+
+**Pourquoi un rayon à part pour les champs** (2026-10-25) : à `--radius-card`
+sur une boîte haute de 3 rem, l'arrondi atteint la demi-hauteur et le champ
+prend la forme d'une capsule — juste au-dessus d'un vrai bouton en capsule,
+on ne sait plus lequel des deux se clique.
+
+### Le formulaire d'inscription — une modale
+
+Arrêté le 2026-10-25. Les « Réserver ma place » ouvrent une modale, ils ne
+font plus défiler vers une ancre : le visiteur ne perd pas l'endroit où il
+lisait. C'est un `<dialog>` natif — piège à focus, Échap, inertie de la page
+et couche supérieure sont gratuits et corrects, ce qu'une modale maison rate
+presque toujours.
+
+Entrée : fondu + montée d'1 rem en 200 ms, le vocabulaire de `Reveal` en plus
+court parce qu'un panneau répond à un clic et non à un défilement. Le fond
+est un voile noir à 88 %, **sans flou** — l'aurore du hero est lumineuse, en
+dessous de 88 % le compte à rebours restait lisible derrière le panneau.
+
+**Pas de couleur d'alerte dans le système.** Un champ fautif se marque donc
+au contraste (bordure et texte en blanc franc) et jamais en vert : le vert
+est la couleur de l'accent et du succès, il dirait l'inverse. À trancher si
+le besoin revient ailleurs.
 
 ### Ombres : aucune
 

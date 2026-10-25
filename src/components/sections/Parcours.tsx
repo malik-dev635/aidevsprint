@@ -1,4 +1,4 @@
-import { CtaButton } from "@/components/ui/CtaButton";
+import { BoutonReserver } from "@/components/inscription/BoutonReserver";
 import { EtiquetteSection } from "@/components/ui/EtiquetteSection";
 import { Reveal } from "@/components/motion/Reveal";
 
@@ -72,9 +72,7 @@ function CarteSession({ numero, titre, texte, ouverte }: Session) {
         {/* Le même bouton que partout ailleurs, taille `sm` : la carte
             est l'une de quatre sur une rangée, elle n'a pas la place du
             format du hero. Le libellé reste court pour la même raison. */}
-        <CtaButton href="#inscription" taille="sm">
-          Réserver
-        </CtaButton>
+        <BoutonReserver taille="sm">Réserver</BoutonReserver>
       </li>
     );
   }

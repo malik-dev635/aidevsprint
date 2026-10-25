@@ -21,6 +21,9 @@ class EditionResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
+            // La clé que `POST /api/inscriptions` attend en `edition_id`.
+            // Sans elle, le formulaire du site n'a rien à envoyer.
+            'id' => $this->id,
             'numero' => $this->numero,
             'dateDebut' => $this->date_debut?->toIso8601String(),
             'ville' => $this->ville,

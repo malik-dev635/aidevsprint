@@ -1,6 +1,6 @@
 import Aurora from "@/components/backgrounds/Aurora";
 import { CarteInfos } from "./CarteInfos";
-import { CtaButton } from "@/components/ui/CtaButton";
+import { BoutonReserver } from "@/components/inscription/BoutonReserver";
 import { CountdownFlip } from "./CountdownFlip";
 import { ModulesProgramme } from "./ModulesProgramme";
 import { SeatsGauge } from "./SeatsGauge";
@@ -75,7 +75,7 @@ export function Hero({ edition }: { edition: Edition }) {
 
           {/* ── Action, et l'urgence juste à côté ──────────────────── */}
             <div className="flex flex-col gap-8 lg:flex-row lg:items-center lg:gap-12">
-            <CtaButton href="#inscription">Réserver ma place</CtaButton>
+            <BoutonReserver />
 
             {/* Largeur proportionnelle à l'écran, pas un plafond fixe :
                  une barre de 26rem est trop longue sur un 14 pouces. */}

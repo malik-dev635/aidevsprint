@@ -55,6 +55,20 @@ class ApiPubliqueTest extends TestCase
             ->assertJsonPath('data.0.dateDebut', null);
     }
 
+    /**
+     * Le formulaire du site renvoie cette clé en `edition_id`. Si elle
+     * disparaît de la ressource, plus personne ne peut s'inscrire — et
+     * rien d'autre dans la suite ne s'en apercevrait.
+     */
+    public function test_l_edition_expose_son_id_au_formulaire(): void
+    {
+        $edition = $this->editionPubliee();
+
+        $this->getJson('/api/editions')
+            ->assertOk()
+            ->assertJsonPath('data.0.id', $edition->id);
+    }
+
     public function test_les_formateurs_sortent_dans_l_ordre_demande(): void
     {
         Formateur::create(['prenom' => 'Youssouf', 'role' => 'DevOps', 'ordre' => 2]);

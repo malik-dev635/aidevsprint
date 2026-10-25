@@ -233,9 +233,27 @@ fait échouer la migration des sessions. `config/database.php` force
 `'engine' => 'InnoDB'` pour que la base soit la même quelle que soit la
 machine.
 
+### Le formulaire côté site
+
+Depuis le 2026-10-25, le site a son formulaire de réservation : une
+**modale**, ouverte par n'importe quel « Réserver ma place ». Il n'y a plus
+d'ancre `#inscription` — voir `src/components/inscription/`.
+
+Trois champs, exactement ceux qu'accepte `EnregistrerInscription` : nom,
+téléphone, email. L'email est facultatif côté API mais **obligatoire côté
+formulaire**, parce que l'écran de confirmation promet un email.
+
+L'adresse du back vient de `NEXT_PUBLIC_API_URL` (voir `.env.example`). Sans
+elle, le formulaire ne tente aucun envoi et affiche le numéro WhatsApp : un
+repli silencieux sur `localhost` partirait en production et perdrait les
+inscriptions sans bruit.
+
+`EditionResource` expose désormais `id` — c'est ce que le formulaire renvoie
+en `edition_id`.
+
 ### Tests
 
-`tests/Feature/ApiPubliqueTest.php` — 8 tests sur SQLite en mémoire. Ils
+`tests/Feature/ApiPubliqueTest.php` — 9 tests sur SQLite en mémoire. Ils
 gardent la forme des réponses (une clé renommée casse le front en silence) et
 surtout le fait qu'on ne peut ni lister les inscrits, ni se déclarer payé en
 s'inscrivant.
@@ -244,7 +262,8 @@ s'inscrivant.
 
 - [ ] Créer le compte admin, saisir la vraie date et publier l'édition #1
 - [ ] Brancher le front sur l'API : il lit encore `EDITION_PROVISOIRE` en dur
-- [ ] Le formulaire d'inscription côté site — `#inscription` ne mène nulle part
+- [ ] L'email de confirmation : le formulaire **le promet**, Laravel ne
+      l'envoie pas (ni Mailable, ni SMTP). À écrire avant la mise en ligne
 - [ ] Le paiement CinetPay : initiation, webhook signé, statut
 - [ ] Export CSV des inscrits
 - [ ] Hébergement : Laravel ne tourne pas sur Vercel. Forge, VPS, o2switch ?

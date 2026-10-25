@@ -6,6 +6,8 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 import Lenis from "lenis";
 import "lenis/dist/lenis.css";
 
+import { enregistreDefilement } from "@/components/motion/defilement";
+
 gsap.registerPlugin(ScrollTrigger);
 
 /**
@@ -42,6 +44,10 @@ export function ScrollFluide() {
 
     lenis.on("scroll", ScrollTrigger.update);
 
+    // La modale d'inscription a besoin de le mettre en pause. Voir
+    // `defilement.ts` : sans ça la page glisse derrière le panneau.
+    enregistreDefilement(lenis);
+
     // Lenis avance au rythme du ticker GSAP, pas sur son propre `raf` :
     // une seule boucle d'animation pour toute la page.
     const avance = (temps: number) => lenis.raf(temps * 1000);
@@ -49,6 +55,7 @@ export function ScrollFluide() {
     gsap.ticker.lagSmoothing(0);
 
     return () => {
+      enregistreDefilement(null);
       gsap.ticker.remove(avance);
       gsap.ticker.lagSmoothing(500, 33);
       lenis.destroy();

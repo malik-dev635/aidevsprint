@@ -1,4 +1,4 @@
-import { CtaButton } from "@/components/ui/CtaButton";
+import { BoutonReserver } from "@/components/inscription/BoutonReserver";
 import { Reveal } from "@/components/motion/Reveal";
 
 /**
@@ -37,12 +37,7 @@ export function CtaFinal() {
           Prêt à coder <em>proprement</em> avec l&apos;IA ?
         </h2>
 
-        <CtaButton
-          href="#inscription"
-          className="mt-[clamp(2rem,6svh,3.5rem)]"
-        >
-          Réserver ma place
-        </CtaButton>
+        <BoutonReserver className="mt-[clamp(2rem,6svh,3.5rem)]" />
       </Reveal>
     </section>
   );

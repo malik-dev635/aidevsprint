@@ -51,6 +51,10 @@
   /* Rayons */
   --radius-card: 1.5rem;
   --radius-pill: 9999px;
+  /* Les champs de saisie ont leur propre rayon : à 1.5rem sur une boîte
+     haute de 3rem, l'arrondi atteint la demi-hauteur et le champ prend la
+     forme d'un bouton — juste au-dessus d'un vrai bouton en pilule. */
+  --radius-field: 0.625rem;
 
   /* Paliers — xl couvre les portables 14-16", 3xl les grands écrans */
   --breakpoint-3xl: 120rem;
@@ -140,15 +144,69 @@ body {
   outline-offset: 0.1875rem;
 }
 
+/* ── La modale d'inscription ───────────────────────────────────────
+   Le `<dialog>` natif passe de `display: none` à `display: block` : sans
+   `allow-discrete`, la transition n'a pas lieu et le panneau apparaît d'un
+   coup. `@starting-style` donne l'état de départ de la toute première
+   image, celle où l'élément vient d'entrer dans la couche supérieure.
+
+   Montée d'1rem et fondu, 200 ms : exactement le vocabulaire de `Reveal`,
+   en plus court parce qu'un panneau répond à un clic, pas à un défilement.
+   Ni ombre ni flou derrière — un simple voile noir. */
+.modale-inscription,
+.modale-inscription::backdrop {
+  transition:
+    opacity 200ms var(--ease-out-strong),
+    translate 200ms var(--ease-out-strong),
+    overlay 200ms allow-discrete,
+    display 200ms allow-discrete;
+}
+
+.modale-inscription {
+  opacity: 0;
+  translate: 0 1rem;
+}
+
+.modale-inscription::backdrop {
+  /* 0,88 et pas 0,8 : l'aurore du hero est lumineuse, à 0,8 le compte à
+     rebours restait lisible derrière et se disputait le panneau. */
+  background: rgb(0 0 0 / 0.88);
+  opacity: 0;
+}
+
+.modale-inscription[open],
+.modale-inscription[open]::backdrop {
+  opacity: 1;
+  translate: 0 0;
+}
+
+@starting-style {
+  .modale-inscription[open] {
+    opacity: 0;
+    translate: 0 1rem;
+  }
+
+  .modale-inscription[open]::backdrop {
+    opacity: 0;
+  }
+}
+
 /* Accessibilité : moins de mouvement, pas zéro animation.
    On garde opacité et couleur, on retire les déplacements. */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
-  *::after {
+  *::after,
+  *::backdrop {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+
+  /* La modale arrive sans monter : le fondu suffit à dire qu'elle est là. */
+  .modale-inscription,
+  .modale-inscription[open] {
+    translate: none;
   }
 }

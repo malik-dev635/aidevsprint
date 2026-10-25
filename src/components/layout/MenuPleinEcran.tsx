@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
 
-import { CtaButton } from "@/components/ui/CtaButton";
+import { BoutonReserver } from "@/components/inscription/BoutonReserver";
 
 type Ancre = { href: string; label: string };
 
@@ -109,9 +109,12 @@ export function MenuPleinEcran({ ancres }: { ancres: readonly Ancre[] }) {
 
           <div className="shell pb-[calc(1.5rem+env(safe-area-inset-bottom,0rem))]">
             <div data-entree>
-              <CtaButton href="#inscription" pleineLargeur>
-                Réserver ma place
-              </CtaButton>
+              {/* Le menu se referme d'abord : deux couches plein écran
+                  l'une sur l'autre, on ne sait plus laquelle répond. */}
+              <BoutonReserver
+                pleineLargeur
+                onAvantOuverture={() => setOuvert(false)}
+              />
             </div>
           </div>
         </div>

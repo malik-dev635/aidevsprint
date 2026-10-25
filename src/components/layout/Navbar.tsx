@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 
-import { CtaButton } from "@/components/ui/CtaButton";
+import { BoutonReserver } from "@/components/inscription/BoutonReserver";
 import { MenuPleinEcran } from "./MenuPleinEcran";
 
 const ANCRES = [
@@ -102,9 +102,7 @@ export function Navbar({
                 un `hidden` passé en className ne gagne pas à coup sûr contre
                 le `inline-flex` de base — l'ordre dépend du CSS généré. */}
             <div className="hidden lg:block">
-              <CtaButton href="#inscription" taille="sm">
-                Réserver ma place
-              </CtaButton>
+              <BoutonReserver taille="sm" />
             </div>
 
             {/* Sous lg, les ancres sont masquées : sans ce menu, elles
@@ -141,9 +139,7 @@ export function Navbar({
               )}
             </p>
 
-            <CtaButton href="#inscription" taille="sm">
-              Réserver
-            </CtaButton>
+            <BoutonReserver taille="sm">Réserver</BoutonReserver>
           </div>
         </div>
       </div>

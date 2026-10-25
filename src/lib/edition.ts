@@ -10,6 +10,8 @@
  */
 
 export type Edition = {
+  /** La clé de l'édition en base. Le formulaire la renvoie en `edition_id`. */
+  id: number;
   numero: number;
   /** ISO 8601. `null` tant que la date n'est pas arrêtée. */
   dateDebut: string | null;
@@ -30,6 +32,11 @@ export const CHAMPS_PROVISOIRES = [
 ] as const satisfies readonly (keyof Edition)[];
 
 export const EDITION_PROVISOIRE: Edition = {
+  // `id` n'est pas une donnée affichée : c'est la clé que le formulaire
+  // renvoie à l'API. 1 est la valeur que le seeder donne à l'édition #1
+  // dans une base neuve. Le jour où le front lit vraiment l'API, elle
+  // vient de là et cette ligne disparaît avec le reste du fichier.
+  id: 1,
   numero: 1,
 
   // ── confirmés (affiche + lieu donné par Malik) ────────────

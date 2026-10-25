@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { CtaButton } from "@/components/ui/CtaButton";
+import { BoutonReserver } from "@/components/inscription/BoutonReserver";
 import { EtiquetteSection } from "@/components/ui/EtiquetteSection";
 import { A_DETERMINER, type Edition } from "@/lib/edition";
 import { Reveal } from "@/components/motion/Reveal";
@@ -206,7 +206,7 @@ export function Session({ edition }: { edition: Edition }) {
                 WhatsApp · {WHATSAPP_AFFICHE}
               </Link>
 
-              <CtaButton href="#inscription">Réserver ma place</CtaButton>
+              <BoutonReserver />
             </div>
           </div>
         </div>

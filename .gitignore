@@ -36,6 +36,9 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 .env*
+# `!.env.example` plus haut ne suffit pas : la dernière règle qui matche
+# gagne, et le `.env*` juste au-dessus le réattrapait.
+!.env.example
 .vercel
 *.tsbuildinfo
 next-env.d.ts
