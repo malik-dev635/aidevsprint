@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, type ReactNode } from "react";
+import { createElement, useRef, type ElementType, type ReactNode } from "react";
 import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
@@ -21,7 +21,9 @@ gsap.registerPlugin(ScrollTrigger, useGSAP);
  *
  * Ce composant remplace le `<div className="shell">` de la section plutôt
  * que de s'ajouter autour : le DOM reste identique, et la section reste un
- * composant serveur. Seul ce conteneur est client.
+ * composant serveur. Seul ce conteneur est client. `as` permet de remplacer
+ * aussi bien un `<article>` ou une `<li>` — sans lui, révéler un bloc plus
+ * fin qu'une section obligeait à insérer un `div` qui cassait la grille.
  *
  * Le flash : le HTML est pré-rendu visible, et GSAP ne masque qu'à
  * l'hydratation. Un bloc déjà à l'écran au chargement peut donc clignoter.
@@ -35,12 +37,15 @@ export function Reveal({
   className = "",
   /** Décalage entre enfants directs, en secondes. 0 pour tout d'un bloc. */
   cascade = 0.07,
+  /** La balise rendue. `div` par défaut, `article` pour un profil, etc. */
+  as = "div",
 }: {
   children: ReactNode;
   className?: string;
   cascade?: number;
+  as?: ElementType;
 }) {
-  const bloc = useRef<HTMLDivElement>(null);
+  const bloc = useRef<HTMLElement>(null);
 
   useGSAP(
     () => {
@@ -76,9 +81,5 @@ export function Reveal({
     { scope: bloc, dependencies: [cascade] },
   );
 
-  return (
-    <div ref={bloc} className={className}>
-      {children}
-    </div>
-  );
+  return createElement(as, { ref: bloc, className }, children);
 }

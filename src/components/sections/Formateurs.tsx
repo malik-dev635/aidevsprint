@@ -15,18 +15,48 @@ import { Reveal } from "@/components/motion/Reveal";
  * chaque badge dispose de la moitié de la largeur : de la place pour le
  * tirer sans qu'il sorte de son canvas.
  *
- * Sous `lg`, le badge devient une simple image : même visuel, aucun
- * contexte WebGL sur un téléphone.
+ * ── Sous `lg` ────────────────────────────────────────────────────────
+ * Le badge laisse la place à la photo détourée. Arrêté avec Malik le
+ * 2026-10-25 : le badge imprime le nom et le rôle sur l'image, et le bloc
+ * texte les réécrivait juste en dessous — chaque formateur se présentait
+ * deux fois. Le badge occupait en plus 60 % de la largeur et laissait une
+ * bande morte à sa droite.
  *
- * Et au-dessus de `lg`, les trois badges ne se montent plus ensemble : voir
- * `BadgeSuspendu`, qui attend que la rangée approche. Trois scènes Three.js
- * démarrant au chargement de la page, c'était le vrai coût de cette section.
+ * Maintenant : portrait à gauche, rôle et nom à sa droite, le reste en
+ * pleine largeur dessous. Rien n'est retiré, c'est une réduction — la
+ * photo remplace le badge, elle ne le supprime pas.
+ *
+ * ── Les déclenchements ───────────────────────────────────────────────
+ * Rien ne démarre en même temps, c'est la plainte à laquelle cette version
+ * répond :
+ *
+ * 1. Chaque profil a sa propre révélation, au lieu d'une seule pour les
+ *    trois. Avant, le bloc entier s'animait quand le premier profil
+ *    arrivait — les deux suivants avaient fini d'apparaître bien avant
+ *    qu'on les atteigne.
+ * 2. La machine à écrire attend que la révélation du titre soit posée
+ *    (voir `ATTENTE_FRAPPE`), au lieu de taper derrière un fondu.
+ * 3. Les trois badges WebGL ne se construisent plus dans la même image :
+ *    voir `BadgeSuspendu` et `DELAI_BADGE`.
  *
  * Ce que transmettent Youssouf et Malik vient du brief, mot pour mot.
  * Celui de Victorien et les liens ne sont pas fournis : [À COMPLÉTER].
  */
 
 const A_COMPLETER = "[À COMPLÉTER]";
+
+/**
+ * Le retard de la machine à écrire, en millisecondes.
+ *
+ * La révélation dure 500 ms et le titre est le deuxième enfant du bloc,
+ * donc 70 ms de cascade en plus. On attend que ce soit posé : sinon la
+ * phrase se tape pendant le fondu, et les deux mouvements se marchent
+ * dessus au moment précis où l'œil arrive sur le titre.
+ */
+const ATTENTE_FRAPPE = 650;
+
+/** Écart entre deux montages de canvas WebGL. Voir `BadgeSuspendu`. */
+const DELAI_BADGE = 260;
 
 /** Longueur de cordon et balancement propres à chaque badge. */
 /* `size` est une fraction du conteneur : au-delà de ~0,7 le badge
@@ -38,13 +68,7 @@ const SUSPENSIONS = [
   { strapLength: 0.32, size: 0.65, breeze: 0.45 },
 ];
 
-function Profil({
-  formateur,
-  index,
-}: {
-  formateur: Formateur;
-  index: number;
-}) {
+function Profil({ formateur, index }: { formateur: Formateur; index: number }) {
   const nomComplet = formateur.nom
     ? `${formateur.prenom} ${formateur.nom}`
     : formateur.prenom;
@@ -54,8 +78,11 @@ function Profil({
   return (
     // Grille à deux colonnes plutôt qu'une rangée flex : avec `shrink-0`,
     // le badge débordait du conteneur et se faisait couper par le bord.
-    <article
-      className="flex flex-col items-start gap-[clamp(1.5rem,4svh,3rem)]
+    // `Reveal` remplace l'`<article>` : un `div` enveloppant de plus aurait
+    // cassé la grille de la colonne.
+    <Reveal
+      as="article"
+      className="flex flex-col gap-[clamp(1.5rem,4svh,3rem)]
                  lg:grid lg:grid-cols-2 lg:items-center
                  lg:gap-[clamp(2rem,5vw,5rem)]"
     >
@@ -74,20 +101,7 @@ function Profil({
           size={s.size}
           strapLength={s.strapLength}
           breeze={s.breeze}
-        />
-      </div>
-
-      {/* Mobile : la même carte, en image. Aucun WebGL. */}
-      <div
-        className="relative aspect-[3/4] w-[clamp(12rem,60vw,18rem)] shrink-0
-                   overflow-hidden rounded-card border border-fg/15 lg:hidden"
-      >
-        <Image
-          src={formateur.badge}
-          alt={`Badge de ${nomComplet}`}
-          fill
-          sizes="60vw"
-          className="object-cover"
+          delaiMs={index * DELAI_BADGE}
         />
       </div>
 
@@ -100,35 +114,60 @@ function Profil({
             : "lg:order-2 lg:justify-self-start"
         }`}
       >
-        <p className="font-mono text-small uppercase tracking-[0.25em] text-accent">
-          {formateur.role}
-        </p>
+        {/* Sous `lg` : la photo et l'identité sur une rangée, pour occuper
+            la largeur au lieu de la laisser vide à droite du portrait.
+            À partir de `lg` la photo disparaît — le badge 3D la remplace —
+            et le bloc redevient une colonne, comme avant. */}
+        <div className="flex items-center gap-[clamp(0.875rem,3vw,1.25rem)] lg:block">
+          {/* La photo est détourée sur fond transparent : il lui faut un
+              fond à elle, sinon elle flotte sur le noir de la page. */}
+          <div
+            className="relative size-[clamp(4.5rem,26vw,8rem)] shrink-0
+                       overflow-hidden rounded-card border border-accent/30
+                       bg-surface lg:hidden"
+          >
+            <Image
+              src={formateur.photo}
+              alt={`Portrait de ${nomComplet}`}
+              fill
+              sizes="26vw"
+              className="object-cover object-top"
+            />
+          </div>
 
-        <h3 className="text-h2 font-bold leading-[1.05] tracking-tighter">
-          {nomComplet}
-        </h3>
+          <div className="flex min-w-0 flex-col gap-2 lg:gap-4">
+            <p className="font-mono text-small uppercase tracking-[0.25em] text-accent">
+              {formateur.role}
+            </p>
+
+            <h3 className="text-h2 font-bold leading-[1.05] tracking-tighter">
+              {nomComplet}
+            </h3>
+          </div>
+        </div>
 
         <p
           className={`text-body ${
             formateur.transmet ? "text-fg/70" : "font-mono text-accent/70"
           }`}
         >
-          {formateur.transmet ?? `${A_COMPLETER} — ce qu'il transmet ce jour-là.`}
+          {formateur.transmet ??
+            `${A_COMPLETER} — ce qu'il transmet ce jour-là.`}
         </p>
 
         <p className="font-mono text-small text-accent/70">
           {A_COMPLETER} — GitHub, LinkedIn, portfolio
         </p>
       </div>
-    </article>
+    </Reveal>
   );
 }
 
 export function Formateurs() {
   return (
     <section id="formateurs" className="relative py-[clamp(4rem,12svh,9rem)]">
-      <Reveal className="shell">
-        <div className="flex flex-col items-center text-center">
+      <div className="shell">
+        <Reveal className="flex flex-col items-center text-center">
           <p className="font-mono text-small uppercase tracking-[0.25em] text-accent">
             Les formateurs
           </p>
@@ -141,20 +180,20 @@ export function Formateurs() {
             text="Un trio complet prêt à vous transmettre notre savoir."
             loop={false}
             typingSpeed={38}
-            initialDelay={120}
+            initialDelay={ATTENTE_FRAPPE}
             startOnVisible
             cursorCharacter="_"
             cursorClassName="text-accent"
             className="mt-4 max-w-[22ch] text-h1 font-bold leading-[1.05] tracking-tighter text-fg"
           />
-        </div>
+        </Reveal>
 
         <div className="mt-[clamp(2rem,6svh,4rem)] flex flex-col gap-[clamp(2rem,6svh,4rem)]">
           {FORMATEURS.map((f, i) => (
             <Profil key={f.prenom} formateur={f} index={i} />
           ))}
         </div>
-      </Reveal>
+      </div>
     </section>
   );
 }
