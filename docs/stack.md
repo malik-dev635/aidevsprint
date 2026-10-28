@@ -213,22 +213,31 @@ participant ne peut plus ni suivre son dossier ni payer.
       jauge de places reste vide.
 - [ ] Ajouter **lieu / ville / format** au modèle `Sprint`, ou acter qu'ils
       restent côté site.
-- [ ] Régler **`PAYSTACK_CALLBACK_URL`** sur notre page de retour.
+- [ ] Régler **`PAYSTACK_CALLBACK_URL`** sur notre page de retour, qui
+      existe depuis le 2026-10-28 :
+      `https://ai-dev-sprint.com/paiement/retour`. Tant qu'elle ne pointe
+      pas là, le participant paie et atterrit ailleurs — l'argent part, la
+      confirmation non.
 - [ ] Dire s'il part **un email** à l'inscription. Rien dans la doc n'en
       parle, donc le site n'en promet aucun.
 
 ### Reste à faire côté site
 
-- [ ] **Le paiement.** `POST /payments/enrollments/:id/initialize` →
-      redirection vers `authorizationUrl` → page de retour → `verify`.
-      Rien n'est branché : l'écran de confirmation renvoie sur WhatsApp et
-      le dit en [À COMPLÉTER].
 - [ ] Décider ce qu'on fait du **paiement fractionné** : le modèle autorise
-      de payer en plusieurs fois, le site annonce 20 000 FCFA d'un bloc.
+      de payer en plusieurs fois à partir de `minimumPaymentXof`, le site
+      annonce et encaisse 20 000 FCFA d'un bloc. La page de retour sait
+      déjà afficher un solde restant, au cas où.
 - [ ] Le `trackingToken` ne vit que dans le `localStorage` du navigateur qui
       s'est inscrit. Stockage vidé, autre téléphone, navigation privée : il
-      est perdu et le participant ne peut plus payer. À régler avec
-      Youssouf — un lien de suivi par email serait la vraie réponse.
+      est perdu et le participant ne peut plus payer depuis le site. Le
+      webhook Paystack met quand même le statut à jour, et la page de
+      retour le dit au lieu d'afficher un échec — mais c'est un pansement.
+      La vraie réponse est un lien de suivi par email, et elle appartient
+      à l'API.
+- [ ] **Mentions légales et politique de confidentialité.** Le site
+      collecte nom, téléphone, email et passe par un prestataire de
+      paiement. Le formulaire n'affiche pas de case de consentement, faute
+      de page vers où pointer.
 
 ## Paiement
 
@@ -241,6 +250,33 @@ ce que l'API de Youssouf intègre. Montants entiers, devise `XOF`.
 > doublée par un choix déjà implémenté. À vérifier auprès de Paystack :
 > quels opérateurs mobile money sont réellement couverts en Côte d'Ivoire,
 > les frais par transaction, et le délai de reversement.
+
+### Le parcours, tel qu'il est branché
+
+Depuis le 2026-10-28. Tout tient dans `src/lib/paiement.ts` et
+`src/app/paiement/retour/`.
+
+1. L'inscription réussit. On range le `trackingToken` sous
+   `aidevsprint.suivi.<id>`.
+2. L'écran de confirmation propose « Payer 20 000 FCFA ».
+   `POST /payments/enrollments/:id/initialize`, jeton en en-tête
+   `x-tracking-token`, corps `{ amountXof }`.
+3. On range la trace sous `aidevsprint.paiement.<reference>` — **avant** de
+   rediriger. Une fois l'onglet parti il n'y a plus de code à nous pour
+   l'écrire, et Paystack ne renvoie que la référence : sans cette clé, la
+   page de retour ne sait pas à quel dossier la rattacher.
+4. Redirection vers `authorizationUrl`, après vérification que l'hôte est
+   bien `paystack.com`.
+5. Retour sur `/paiement/retour?reference=…` →
+   `GET /payments/:reference/verify`, jeton en en-tête.
+
+Le jeton ne passe **jamais** en paramètre d'adresse, bien que l'API
+accepte `?trackingToken=` : une adresse se retrouve dans l'historique,
+dans les journaux du serveur et dans le `Referer` de la page suivante.
+
+Sept écrans de retour, tous vérifiés contre un faux back le 2026-10-28 :
+réglé, réglé partiellement, en attente, échoué, référence absente,
+référence sans jeton local, et les deux erreurs Paystack.
 
 ### Règle d'implémentation
 

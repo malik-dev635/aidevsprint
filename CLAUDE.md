@@ -49,8 +49,11 @@ Trois conséquences directes :
    les paiements. Il existe : c'est celui de Youssouf, le site ne fait que
    consommer son API. Voir
    [docs/stack.md](docs/stack.md#backend--lapi-aidev-classroom).
-2. **Le paiement passe par Paystack**, intégré dans l'API. Pas encore
-   branché côté site. Voir [docs/stack.md](docs/stack.md#paiement).
+2. **Le paiement passe par Paystack**, intégré dans l'API et branché côté
+   site depuis le 2026-10-28 : l'écran de confirmation redirige vers
+   Paystack et `/paiement/retour` vérifie auprès du serveur. Reste à
+   régler `PAYSTACK_CALLBACK_URL` côté Youssouf. Voir
+   [docs/stack.md](docs/stack.md#paiement).
 3. **Des données personnelles sont collectées** — nom, contact, paiement.
    Mentions légales, politique de confidentialité et sécurisation des
    données ne sont pas optionnels.

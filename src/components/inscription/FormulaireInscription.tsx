@@ -4,6 +4,12 @@ import { useId, useState } from "react";
 
 import { api, ErreurApi } from "@/lib/api";
 import { CtaButton } from "@/components/ui/CtaButton";
+import {
+  lancePaiement,
+  rangeJetonSuivi,
+  rangeTrace,
+  traduitPaiement,
+} from "@/lib/paiement";
 import type { Edition } from "@/lib/edition";
 
 /**
@@ -26,11 +32,20 @@ import type { Edition } from "@/lib/edition";
  * normalise — voir `normaliseTelephone`. Refuser « 07 04 92 10 80 » ferait
  * perdre des inscriptions, et le site a un seul job.
  *
- * ⚠️  CE QUI N'EXISTE PAS ENCORE
- * Le paiement. `POST /payments/enrollments/:id/initialize` est documenté et
- * en ligne, mais il n'est pas branché ici : il demande une page de retour
- * Paystack et la variable `PAYSTACK_CALLBACK_URL` côté serveur. L'écran de
- * confirmation le dit au lieu de promettre un email que rien n'envoie.
+ * ── Le paiement ──────────────────────────────────────────────────────
+ * Branché le 2026-10-28. L'écran de confirmation propose de régler tout de
+ * suite : `lancePaiement()` rend une adresse Paystack, on y redirige, et
+ * Paystack ramène sur `/paiement/retour`. Le détail est dans
+ * `src/lib/paiement.ts`.
+ *
+ * On paie le prix entier en une fois, parce que c'est ce que le site
+ * annonce. L'API accepte pourtant des versements partiels à partir de
+ * `minimumPaymentXof` : si Malik veut ouvrir le paiement fractionné, c'est
+ * ici que ça se décide, pas dans le back.
+ *
+ * ⚠️  Il reste une dépendance côté serveur : `PAYSTACK_CALLBACK_URL` doit
+ * pointer sur https://ai-dev-sprint.com/paiement/retour. Tant qu'elle ne
+ * l'est pas, le participant paie mais atterrit ailleurs.
  */
 
 const WHATSAPP_AFFICHE = "07 04 92 10 80";
@@ -175,15 +190,26 @@ type ReponseInscription = {
 };
 
 /**
- * Range le jeton de suivi. Échoue en silence : navigation privée, stockage
- * bloqué, quota plein — aucune de ces situations ne doit empêcher
- * l'inscription d'aboutir, elle est déjà enregistrée côté serveur.
+ * Ce qu'on garde d'une inscription réussie, le temps de proposer le
+ * paiement. Le jeton ne transite que par la mémoire de l'onglet et par
+ * `localStorage` — jamais par l'adresse.
  */
-function rangeJetonSuivi(idInscription: number, jeton: string) {
+type Confirmee = { id: number; jeton: string; prenom: string };
+
+/**
+ * L'adresse de paiement vient de notre API, mais on la contrôle quand
+ * même avant d'y envoyer quelqu'un : une redirection est la dernière
+ * chose qu'on veut voir détournée, et la vérification coûte trois lignes.
+ */
+function adressePaystackValide(adresse: string): boolean {
   try {
-    localStorage.setItem(`aidevsprint.suivi.${idInscription}`, jeton);
+    const url = new URL(adresse);
+    return (
+      url.protocol === "https:" &&
+      (url.hostname === "paystack.com" || url.hostname.endsWith(".paystack.com"))
+    );
   } catch {
-    // Rien à faire ici, et rien à dire au visiteur.
+    return false;
   }
 }
 
@@ -219,7 +245,9 @@ export function FormulaireInscription({ edition }: { edition: Edition }) {
   const [valeurs, setValeurs] = useState(VIDE);
   const [erreurs, setErreurs] = useState<Erreurs>({});
   const [etat, setEtat] = useState<Etat>("repos");
-  const [prenomConfirme, setPrenomConfirme] = useState("");
+  const [confirmee, setConfirmee] = useState<Confirmee | null>(null);
+  const [paiementEnCours, setPaiementEnCours] = useState(false);
+  const [erreurPaiement, setErreurPaiement] = useState<string | null>(null);
 
   const ecrit = (champ: NomChamp) => (valeur: string) => {
     setValeurs((v) => ({ ...v, [champ]: valeur }));
@@ -263,7 +291,11 @@ export function FormulaireInscription({ edition }: { edition: Edition }) {
       );
 
       rangeJetonSuivi(enrollment.id, trackingToken);
-      setPrenomConfirme(valeurs.prenom.trim());
+      setConfirmee({
+        id: enrollment.id,
+        jeton: trackingToken,
+        prenom: valeurs.prenom.trim(),
+      });
       setValeurs(VIDE);
       setEtat("ok");
     } catch (cause) {
@@ -279,7 +311,45 @@ export function FormulaireInscription({ edition }: { edition: Edition }) {
     }
   }
 
-  if (etat === "ok") {
+  /**
+   * Lance le versement et part chez Paystack.
+   *
+   * On range la trace AVANT de rediriger : une fois l'onglet parti, il
+   * n'y a plus de code à nous pour l'écrire, et sans elle la page de
+   * retour ne saura pas à quel dossier rattacher la référence.
+   */
+  async function paie() {
+    if (!confirmee || paiementEnCours) return;
+
+    setPaiementEnCours(true);
+    setErreurPaiement(null);
+
+    try {
+      const lance = await lancePaiement(
+        confirmee.id,
+        edition.prixFCFA,
+        confirmee.jeton,
+      );
+
+      if (!adressePaystackValide(lance.authorizationUrl)) {
+        throw new Error(`adresse de paiement inattendue : ${lance.authorizationUrl}`);
+      }
+
+      rangeTrace(lance.reference, {
+        idInscription: confirmee.id,
+        jeton: confirmee.jeton,
+        prenom: confirmee.prenom,
+        montantXof: edition.prixFCFA,
+      });
+
+      window.location.href = lance.authorizationUrl;
+    } catch (cause) {
+      setPaiementEnCours(false);
+      setErreurPaiement(traduitPaiement(cause));
+    }
+  }
+
+  if (etat === "ok" && confirmee) {
     return (
       <div
         role="status"
@@ -288,17 +358,39 @@ export function FormulaireInscription({ edition }: { edition: Edition }) {
                    py-[clamp(1.5rem,4svh,2.5rem)] text-center"
       >
         <p className="text-h3 font-bold leading-tight">
-          C&apos;est noté, {prenomConfirme}.
+          C&apos;est noté, {confirmee.prenom}.
         </p>
         <p className="text-body text-fg/70">
-          Ta place est retenue. Il reste à régler les{" "}
-          {edition.prixFCFA.toLocaleString("fr-FR")} FCFA pour la confirmer.
+          Ta place est retenue. Elle est confirmée une fois les{" "}
+          {edition.prixFCFA.toLocaleString("fr-FR")} FCFA réglés.
         </p>
-        {/* Le paiement en ligne n'est pas branché. On ne promet donc ni
-            email ni redirection : on donne le canal qui existe vraiment. */}
-        <p className="font-mono text-small text-accent/70">
-          [À COMPLÉTER] — le paiement en ligne. En attendant, écris-nous sur
-          WhatsApp au {WHATSAPP_AFFICHE}.
+
+        {/* Payer tout de suite, tant que l'onglet est encore ouvert : le
+            jeton de suivi ne vit que dans ce navigateur, et c'est lui qui
+            autorise le paiement. Revenir demain depuis le téléphone de
+            quelqu'un d'autre ne marchera pas. */}
+        <CtaButton
+          type="button"
+          onClick={() => void paie()}
+          disabled={paiementEnCours}
+          pleineLargeur
+          className="mt-[clamp(0.25rem,1svh,0.75rem)]"
+        >
+          {paiementEnCours
+            ? "Ouverture du paiement…"
+            : `Payer ${edition.prixFCFA.toLocaleString("fr-FR")} FCFA`}
+        </CtaButton>
+
+        {erreurPaiement && (
+          <p role="alert" className="text-small font-medium text-fg">
+            {erreurPaiement}
+          </p>
+        )}
+
+        <p className="text-small text-fg/45">
+          Paiement par Paystack. Tu peux aussi régler plus tard en nous
+          écrivant sur WhatsApp au {WHATSAPP_AFFICHE} — mais depuis cet
+          appareil, c&apos;est plus simple maintenant.
         </p>
       </div>
     );
