@@ -28,14 +28,27 @@ export function Hero({ edition }: { edition: Edition | null }) {
           disputer la vedette aux chiffres. */}
       <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">
         <Aurora
-          // TEST — couleurs d'origine de React Bits, le temps de juger.
-          colorStops={["#5227FF", "#7cff67", "#5227FF"]}
+          // Les trois arrêts du dégradé signature : son vert de départ,
+          // son bleu d'arrivée, et la teinte de bascule du milieu. Les
+          // couleurs d'origine de React Bits (violet + vert acide) sont
+          // parties le 2026-10-28 — c'était exactement le dégradé
+          // violet-bleu générique que le design system interdit, et le
+          // hero est l'un des quatre emplacements où le dégradé maison a
+          // le droit d'exister.
+          colorStops={["#2ee66b", "#1a9bba", "#0b63f6"]}
           amplitude={1}
           blend={0.5}
           height={0.45}
           speed={1}
           glow={0.6}
-          opacity={1}
+          // À pleine opacité, le vert de l'aurore atteint exactement celui
+          // de l'accent : le « AI » du logo, qui est en accent, disparaissait
+          // dans le fond. Mesuré le 2026-10-28. On baisse plutôt que de
+          // retourner le dégradé — le vert passerait à droite et mangerait
+          // les pastilles numérotées du programme, qui sont vertes aussi.
+          // C'est aussi ce que le commentaire au-dessus réclame depuis le
+          // début : un fond qui ne dispute pas la vedette aux chiffres.
+          opacity={0.5}
           intro={false}
         />
       </div>
