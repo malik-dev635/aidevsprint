@@ -42,3 +42,8 @@ yarn-error.log*
 .vercel
 *.tsbuildinfo
 next-env.d.ts
+
+# Références visuelles téléchargées ailleurs. Elles servent à nourrir la
+# direction artistique, mais ce sont les maquettes d'autres gens : le
+# dépôt est public, elles n'y ont pas leur place.
+design/inspiration/
