@@ -1,55 +1,112 @@
+import { api, ErreurApi, type Page } from "@/lib/api";
+
 /**
- * ⚠️  DONNÉES PROVISOIRES — À REMPLACER PAR L'API (Laravel, pas encore écrite)
+ * L'édition courante, telle que le site l'affiche.
  *
- * Ce fichier n'existe que pour pouvoir afficher et animer le hero avant que
- * le back ne soit en place. Aucune valeur marquée provisoire n'est réelle.
+ * Elle vient maintenant de l'API (`GET /sprints`, voir `docs/api.md`) et
+ * non plus d'un fichier de démonstration — branchée le 2026-10-28.
  *
- * `ville` et `prixFCFA` viennent de l'affiche ; `lieu` a été donné par
- * Malik le 2026-10-19. Ces trois-là sont confirmés.
- * Tout le reste est à déterminer — voir CLAUDE.md § « Reste à préciser ».
+ * ── Ce que l'API ne porte pas ────────────────────────────────────────
+ * Un `Sprint` n'a ni ville, ni lieu, ni format : le modèle a été écrit
+ * pour des sprints de plusieurs semaines, pas pour une journée dans une
+ * salle précise. Ces trois faits sont donc tenus ici, dans `FAITS_LOCAUX`.
+ * Ils viennent du brief et de Malik, ils sont confirmés — ce n'est pas du
+ * remplissage. Le jour où l'API gagne les champs, `FAITS_LOCAUX` meurt.
+ *
+ * Le nombre d'inscrits non plus : il n'existe que sur les routes admin.
+ * `inscrits` reste donc `null` et la jauge affiche [À DÉTERMINER], jusqu'à
+ * ce que la route publique expose un compteur.
  */
 
-export type Edition = {
-  /** La clé de l'édition en base. Le formulaire la renvoie en `edition_id`. */
+/** Le sprint tel que l'API le renvoie. `docs/api.md` § Sprints. */
+export type Sprint = {
   id: number;
-  numero: number;
-  /** ISO 8601. `null` tant que la date n'est pas arrêtée. */
-  dateDebut: string | null;
+  name: string;
+  slug: string;
+  description: string | null;
+  priceXof: number;
+  minimumPaymentXof: number;
+  startAt: string;
+  endAt: string;
+  capacity: number | null;
+  status: "DRAFT" | "ACTIVE" | "INACTIVE" | "COMPLETED";
+};
+
+export type Edition = {
+  /** La clé du sprint. C'est elle que le formulaire envoie en `sprintId`. */
+  id: number;
+  /** Le nom donné au sprint côté admin — il s'affiche tel quel. */
+  nom: string;
+  /** ISO 8601. */
+  dateDebut: string;
   ville: string;
-  /** Adresse précise dans la ville. */
-  lieu: string | null;
-  prixFCFA: number | null;
+  lieu: string;
+  prixFCFA: number;
+  /** `null` = places illimitées, c'est la convention de l'API. */
   quota: number | null;
+  /** Toujours `null` : la route publique ne compte pas les inscrits. */
   inscrits: number | null;
   format: string;
+  /** Le versement minimum accepté. Égal au prix s'il faut tout payer. */
+  minimumFCFA: number;
 };
 
-/** Champs dont la valeur ci-dessous est inventée pour la démo, pas réelle. */
-export const CHAMPS_PROVISOIRES = [
-  "dateDebut",
-  "quota",
-  "inscrits",
-] as const satisfies readonly (keyof Edition)[];
-
-export const EDITION_PROVISOIRE: Edition = {
-  // `id` n'est pas une donnée affichée : c'est la clé que le formulaire
-  // renvoie à l'API. 1 est la valeur que le seeder donne à l'édition #1
-  // dans une base neuve. Le jour où le front lit vraiment l'API, elle
-  // vient de là et cette ligne disparaît avec le reste du fichier.
-  id: 1,
-  numero: 1,
-
-  // ── confirmés (affiche + lieu donné par Malik) ────────────
+/**
+ * Les faits que l'API ne sait pas porter. Tous confirmés :
+ * la ville et le format viennent de l'affiche, le lieu a été donné par
+ * Malik le 2026-10-19.
+ */
+export const FAITS_LOCAUX = {
   ville: "Yamoussoukro",
   lieu: "Mairie de Yamoussoukro — salle multimédia Orange",
-  prixFCFA: 20_000,
   format: "1 journée · présentiel",
-
-  // ── À DÉTERMINER : valeurs de démonstration uniquement ────
-  dateDebut: "2026-12-05T09:00:00.000Z",
-  quota: 50,
-  inscrits: 37,
-};
+} as const;
 
 /** Libellé affiché pour un champ non encore arrêté. */
 export const A_DETERMINER = "[À DÉTERMINER]";
+
+export function versEdition(sprint: Sprint): Edition {
+  return {
+    id: sprint.id,
+    nom: sprint.name,
+    dateDebut: sprint.startAt,
+    prixFCFA: sprint.priceXof,
+    minimumFCFA: sprint.minimumPaymentXof,
+    quota: sprint.capacity,
+    inscrits: null,
+    ...FAITS_LOCAUX,
+  };
+}
+
+/**
+ * L'édition à afficher, ou `null` s'il n'y en a pas.
+ *
+ * `null` n'est pas une erreur : tant qu'aucun sprint n'est `ACTIVE` côté
+ * admin, le catalogue public est vide et c'est le cas aujourd'hui. Le site
+ * doit savoir se montrer sans édition — date, prix et places en
+ * [À DÉTERMINER], inscriptions fermées. Il ne doit surtout pas afficher
+ * les valeurs de la dernière fois.
+ *
+ * Une API injoignable donne le même `null` : la page se construit quand
+ * même. Un site qui ne compile plus parce qu'un serveur tousse, c'est pire
+ * qu'un site incomplet.
+ */
+export async function recupereEdition(): Promise<Edition | null> {
+  try {
+    // `GET /sprints` ne renvoie que les `ACTIVE`, triés du plus récent au
+    // plus ancien. Le premier est l'édition en cours.
+    const page = await api<Page<Sprint>>("/sprints?page=1&limit=1", {
+      revalider: 900,
+    });
+    const sprint = page.items[0];
+    return sprint ? versEdition(sprint) : null;
+  } catch (cause) {
+    console.error(
+      "[edition] catalogue illisible :",
+      cause instanceof ErreurApi
+        ? `${cause.statusCode} ${cause.code} — ${cause.message}`
+        : cause,
+    );
+    return null;
+  }
+}

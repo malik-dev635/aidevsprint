@@ -6,14 +6,15 @@ ce document est la cible, pas un état des lieux.
 ## Vue d'ensemble
 
 ```
-Next.js (front, site public)  ──fetch REST──▶  Laravel (back, API + admin)
+Next.js (front, site public)  ──fetch REST──▶  API Aidev Classroom (NestJS)
          │                                            │
     GSAP + Lenis                                 base de données
     React Bits                                   (à choisir)
 ```
 
 Deux applications séparées, deux déploiements, deux `package.json`.
-Le front ne parle jamais à la base directement : tout passe par l'API Laravel.
+Le front ne parle jamais à la base : tout passe par l'API, et un seul
+module du site l'appelle (`src/lib/api.ts`).
 Deux langages, donc : TypeScript devant, PHP derrière.
 
 ## Frontend
@@ -109,202 +110,145 @@ variantes oblige à reprendre les composants à la main.
   la revente de la bibliothèque elle-même. À relire si le projet devient un
   produit vendu.
 
-## Backend — Laravel
+## Backend — l'API Aidev Classroom
 
-**Décidé et installé le 2026-10-19.** Laravel 13.37 + Filament 5.10, MySQL,
-dans `backend/`. Remplace Strapi, installé le matin même et supprimé le soir.
-
-> La raison du changement n'est pas écrite ici : Malik ne l'a pas donnée, et
-> ce document ne la devine pas. À compléter.
+**Décidé le 2026-10-28.** Le site consomme l'API que Youssouf a construite et
+déployée. Le Laravel + Filament du 2026-10-19 (`backend/`) est **supprimé** :
+il n'a jamais été déployé, n'avait ni paiement ni compte admin, et faire
+vivre deux back-ends pour une seule formation n'avait pas de sens. Son code
+reste dans l'historique git jusqu'au commit de suppression.
 
 | | |
 |---|---|
-| Framework | Laravel `13.37` (PHP `^8.3`) |
-| Admin | Filament `5.10`, panneau `admin` sur `/admin` |
-| Base | MySQL `8.3` — base `aidevsprint` |
-| API | REST, sans authentification, sous `/api` |
-| Langue | `APP_LOCALE=fr` ; Filament est traduit, Laravel garde `en` en repli |
+| Pile | NestJS + Prisma + PostgreSQL + JWT + **Paystack** |
+| Base publique | `https://aidev.you-soft.com` |
+| Base API | `https://aidev.you-soft.com/api/v1` |
+| Swagger | `https://aidev.you-soft.com/api/docs` |
+| Santé | `GET /api/v1/health` → `{ status, db, time }` |
+| Doc | [docs/api/](./api/) — copie de l'archive du 2026-10-27 |
 
-### Le modèle de données
+Côté site, **un seul module touche à `fetch`** : `src/lib/api.ts`. Il déballe
+l'enveloppe `{ data, meta }`, transforme `{ statusCode, code, message }` en
+`ErreurApi`, et distingue une erreur métier d'un serveur injoignable
+(`ErreurReseau`). Le jour où la base change, elle change là.
 
-Les trois entités ne viennent pas de Strapi, elles viennent des types du
-front : `src/lib/edition.ts` et `src/lib/formateurs.ts`. Elles ont survécu au
-changement de back mot pour mot, en `snake_case`.
+L'adresse vient de `NEXT_PUBLIC_API_URL` (voir `.env.example`). Pas de valeur
+par défaut : un repli silencieux sur une adresse en dur partirait en
+production et perdrait les inscriptions sans bruit.
 
-| Table | Champs |
-|------|--------|
-| **editions** | `numero`, `date_debut`, `ville`, `lieu`, `prix_fcfa`, `quota`, `inscrits`, `format`, `publiee_le` |
-| **formateurs** | `prenom`, `nom`, `role`, `photo`, `badge`, `transmet`, `github`, `linkedin`, `ordre` |
-| **inscriptions** | `edition_id`, `nom`, `telephone`, `email`, `statut`, `montant_fcfa`, `reference_paiement` |
+### Du `Sprint` de l'API à l'`Edition` du site
 
-Relations : `Édition 1–N Inscription`, `Édition N–N Formateur` (table pivot
-`edition_formateur`).
+`src/lib/edition.ts` fait la traduction. `GET /sprints?page=1&limit=1` ne
+renvoie que les sprints `ACTIVE`, triés du plus récent au plus ancien : le
+premier est l'édition en cours.
 
-Trois choix qui ne sautent pas aux yeux :
+| Site | API | Note |
+|---|---|---|
+| `id` | `id` | c'est le `sprintId` que le formulaire renvoie |
+| `nom` | `name` | remplace l'ancien « session #N » — l'API n'a pas de numéro |
+| `dateDebut` | `startAt` | |
+| `prixFCFA` | `priceXof` | |
+| `minimumFCFA` | `minimumPaymentXof` | le minimum par versement, pour le paiement fractionné |
+| `quota` | `capacity` | `null` = illimité |
+| `inscrits` | — | **n'existe pas** sur la route publique |
+| `ville`, `lieu`, `format` | — | **n'existent pas** dans le modèle |
 
-- **`publiee_le`** — équivalent du « brouillon / publié » de Strapi. Tant
-  qu'il est vide, l'API ne renvoie pas l'édition. Une session dont la date
-  n'est pas arrêtée ne doit pas apparaître sur le site.
-- **`ordre`** sur Formateur — la section alterne gauche / droite / gauche.
-  Sans champ de tri, l'ordre dépendrait de l'ordre de création.
-- **`reference_paiement`** — `$hidden` sur le modèle. Jamais sérialisée, même
-  si un contrôleur renvoyait le modèle entier par inadvertance.
+### Ce que l'API ne porte pas
 
-Presque tous les champs sont nullables, volontairement : la date, le quota,
-le nombre d'inscrits et les liens des formateurs ne sont pas arrêtés. Une
-colonne `NOT NULL` obligerait à inventer une valeur, et une fausse date en
-base finit sur le site.
+Le modèle `Sprint` a été écrit pour des sprints de plusieurs semaines, pas
+pour une journée dans une salle précise. Il manque donc :
 
-#### Non modélisés, et pourquoi
+- **le lieu et la ville** — tenus dans `FAITS_LOCAUX` (`src/lib/edition.ts`).
+  Ce sont des faits confirmés (affiche + Malik le 2026-10-19), pas du
+  remplissage. Le jour où l'API gagne les champs, `FAITS_LOCAUX` meurt ;
+- **le format** (« 1 journée · présentiel ») — même traitement ;
+- **le nombre d'inscrits** — il n'existe que sur `/admin/enrollments`. La
+  jauge du hero et le compteur de la navbar affichent donc [À DÉTERMINER] ;
+- **les formateurs** — aucune route, aucun modèle. Ils restent en dur dans
+  `src/lib/formateurs.ts`, comme avant.
 
-| Entité | Ce qui bloque |
-|------|---------------|
-| **Paiement** | ses champs sont ceux que renvoie la passerelle. CinetPay n'est pas arrêté. |
-| **Ticket** | dépend de ce qui se passe après paiement — email, WhatsApp, billet ? Question ouverte dans CLAUDE.md. |
-| **Portfolio**, **Article** | entités listées comme « à préciser », jamais tranchées. |
+### Sans édition
 
-#### Questions ouvertes sur ces schémas
-
-- `inscrits` est un **champ saisi**, pas un comptage des inscriptions liées.
-  C'est volontaire tant que des places peuvent se vendre par WhatsApp — mais
-  si tout passe par le site, ce champ devient une seconde vérité qui va
-  diverger. À trancher.
-- `statut` vaut `en_attente` / `payee` / `annulee`. Trois valeurs posées par
-  défaut, pas validées.
-- Un même numéro de téléphone peut s'inscrire deux fois à une édition : index
-  mais pas contrainte unique, un parent pouvant inscrire deux personnes. À
-  confirmer.
-
-### L'API publique
-
-Déclarée dans `routes/api.php`, cinq routes, aucune authentification : tout
-ce qui est lisible ici est déjà public sur le site.
-
-| Route | Rôle |
-|---|---|
-| `GET /api/editions` | les éditions **publiées**, la plus récente d'abord |
-| `GET /api/editions/{numero}` | une édition par son numéro de session, pas son id |
-| `GET /api/formateurs` | les intervenants, triés par `ordre` |
-| `GET /api/formateurs/{id}` | un intervenant |
-| `POST /api/inscriptions` | envoie une demande — 10 par minute et par IP |
-
-**Il n'existe pas de route de lecture des inscriptions.** Ce serait la liste
-publique de tous les inscrits avec leurs numéros de téléphone. C'est l'absence
-de route qui tient cette sécurité, pas un réglage de permissions. L'admin lit
-ces données par Filament, qui ne passe pas par l'API.
-
-Deux détails qui comptent :
-
-- **Les clés sont renommées à la frontière.** La base est en `snake_case`, le
-  front en `camelCase` : `EditionResource` et `FormateurResource` font la
-  traduction, et nulle part ailleurs. La forme renvoyée correspond une pour
-  une aux types de `src/lib/`.
-- **`EnregistrerInscription` n'accepte que quatre champs** : `edition_id`,
-  `nom`, `telephone`, `email`. Ni `statut`, ni `montant_fcfa`, ni
-  `reference_paiement` — ce sont des décisions du serveur. Les laisser passer
-  permettrait de s'inscrire en se déclarant déjà payé.
-
-`install:api` n'a pas été utilisé : la commande installe aussi Sanctum, dont
-l'API n'a pas besoin. `routes/api.php` est déclaré à la main dans
-`bootstrap/app.php`.
-
-### L'admin Filament
-
-`/admin`, trois ressources en français : Éditions, Intervenants, Inscriptions.
-La liste des inscriptions est l'écran principal — recherche par nom et
-téléphone, filtres par statut et par édition, total encaissé en bas de
-colonne, et le nombre de demandes en attente en pastille dans le menu.
-
-**Aucun compte n'existe.** À créer par Malik :
-
-```bash
-cd backend && php artisan make:filament-user
-```
-
-Manque encore, et c'était dans les exigences : **l'export CSV** (il demande un
-`filament:exporter` et une file d'attente) et le **scan des tickets** (qui
-dépend de ce qui se passe après paiement, non tranché).
-
-### Ce que MyISAM cassait
-
-WAMP livre MySQL avec `default_storage_engine = MyISAM` : pas de
-transactions, pas de clés étrangères, et une limite d'index à 1000 octets qui
-fait échouer la migration des sessions. `config/database.php` force
-`'engine' => 'InnoDB'` pour que la base soit la même quelle que soit la
-machine.
+Tant qu'aucun sprint n'est `ACTIVE`, le catalogue public est vide et
+`recupereEdition()` renvoie `null`. **C'est le cas aujourd'hui.** Le site se
+montre alors sans date, sans prix et sans places — en [À DÉTERMINER], jamais
+avec d'anciennes valeurs — et la modale dit que les inscriptions ne sont pas
+ouvertes au lieu de proposer un formulaire qui serait refusé. Une API
+injoignable donne le même `null` : la page se construit quand même.
 
 ### Le formulaire côté site
 
-Depuis le 2026-10-25, le site a son formulaire de réservation : une
-**modale**, ouverte par n'importe quel « Réserver ma place ». Il n'y a plus
-d'ancre `#inscription` — voir `src/components/inscription/`.
+Une **modale**, ouverte par n'importe quel « Réserver ma place » — voir
+`src/components/inscription/`. Il poste `POST /enrollments` :
 
-Trois champs, exactement ceux qu'accepte `EnregistrerInscription` : nom,
-téléphone, email. L'email est facultatif côté API mais **obligatoire côté
-formulaire**, parce que l'écran de confirmation promet un email.
+```json
+{ "sprintId": 3, "student": { "firstName": "Konan", "lastName": "Yao", "email": "konan@exemple.ci", "phone": "+2250704921080" } }
+```
 
-L'adresse du back vient de `NEXT_PUBLIC_API_URL` (voir `.env.example`). Sans
-elle, le formulaire ne tente aucun envoi et affiche le numéro WhatsApp : un
-repli silencieux sur `localhost` partirait en production et perdrait les
-inscriptions sans bruit.
+Deux pièges de ce contrat :
 
-`EditionResource` expose désormais `id` — c'est ce que le formulaire renvoie
-en `edition_id`.
+1. **Prénom et nom séparés.** Le champ unique « nom complet » a disparu.
+2. **Téléphone en E.164 strict.** Le motif attendu est un `+`, un chiffre
+   non nul, puis 6 à 17 chiffres. Personne n'écrit son numéro comme ça ici,
+   donc `normaliseTelephone()` accepte la forme locale et ajoute `+225`
+   quand il y a dix chiffres. Refuser « 07 04 92 10 80 » ferait perdre des
+   inscriptions.
 
-### Tests
+La réponse `201` porte un **`trackingToken`**, renvoyé une seule fois. Il est
+rangé dans `localStorage` sous `aidevsprint.suivi.<id>`. Sans lui, le
+participant ne peut plus ni suivre son dossier ni payer.
 
-`tests/Feature/ApiPubliqueTest.php` — 9 tests sur SQLite en mémoire. Ils
-gardent la forme des réponses (une clé renommée casse le front en silence) et
-surtout le fait qu'on ne peut ni lister les inscrits, ni se déclarer payé en
-s'inscrivant.
+### Ce que Youssouf doit faire de son côté
 
-### Reste à faire
+- [ ] **Ouvrir le CORS.** Mesuré le 2026-10-27 : aucun en-tête
+      `Access-Control-Allow-Origin` n'est renvoyé, pour aucune origine
+      testée (`localhost:3000`, `localhost:3001`, `ai-dev-sprint.com`). Le
+      préflight répond bien 204, mais sans cet en-tête le navigateur
+      bloque. En curl tout passe — c'est uniquement le navigateur qui est
+      bloqué. Il faut renseigner `FRONTEND_URL`.
+- [ ] **Créer le sprint #1 et le passer `ACTIVE`.** `GET /sprints` renvoie
+      `{ items: [], total: 0 }`. Le nom du sprint s'affiche tel quel dans
+      l'étiquette de la section Session : le nommer en conséquence.
+- [ ] Exposer un **compteur d'inscrits** sur la route publique, sinon la
+      jauge de places reste vide.
+- [ ] Ajouter **lieu / ville / format** au modèle `Sprint`, ou acter qu'ils
+      restent côté site.
+- [ ] Régler **`PAYSTACK_CALLBACK_URL`** sur notre page de retour.
+- [ ] Dire s'il part **un email** à l'inscription. Rien dans la doc n'en
+      parle, donc le site n'en promet aucun.
 
-- [ ] Créer le compte admin, saisir la vraie date et publier l'édition #1
-- [ ] Brancher le front sur l'API : il lit encore `EDITION_PROVISOIRE` en dur
-- [ ] L'email de confirmation : le formulaire **le promet**, Laravel ne
-      l'envoie pas (ni Mailable, ni SMTP). À écrire avant la mise en ligne
-- [ ] Le paiement CinetPay : initiation, webhook signé, statut
-- [ ] Export CSV des inscrits
-- [ ] Hébergement : Laravel ne tourne pas sur Vercel. Forge, VPS, o2switch ?
-- [ ] Médias : disque local en dev, S3 ou Cloudinary en production ?
+### Reste à faire côté site
+
+- [ ] **Le paiement.** `POST /payments/enrollments/:id/initialize` →
+      redirection vers `authorizationUrl` → page de retour → `verify`.
+      Rien n'est branché : l'écran de confirmation renvoie sur WhatsApp et
+      le dit en [À COMPLÉTER].
+- [ ] Décider ce qu'on fait du **paiement fractionné** : le modèle autorise
+      de payer en plusieurs fois, le site annonce 20 000 FCFA d'un bloc.
+- [ ] Le `trackingToken` ne vit que dans le `localStorage` du navigateur qui
+      s'est inscrit. Stockage vidé, autre téléphone, navigation privée : il
+      est perdu et le participant ne peut plus payer. À régler avec
+      Youssouf — un lien de suivi par email serait la vraie réponse.
 
 ## Paiement
 
-Encaissement de **20 000 FCFA** par inscription, en Côte d'Ivoire.
+**Tranché hors de nos mains le 2026-10-28 : c'est Paystack**, parce que c'est
+ce que l'API de Youssouf intègre. Montants entiers, devise `XOF`.
 
-### Le point clé
-
-**Stripe et PayPal ne sont pas la bonne réponse ici.** Le paiement local passe
-massivement par le **mobile money** — Orange Money, Wave, MTN MoMo, Moov —
-souvent sans compte bancaire. Il faut un agrégateur qui couvre ces moyens.
-
-### Candidats
-
-| | Couverture | Note |
-|---|---|---|
-| **CinetPay** | Orange Money, Wave, MTN MoMo, Moov + cartes, 10 pays francophones | la référence locale, citée partout pour la Côte d'Ivoire |
-| **PayDunya** | 8 pays d'Afrique de l'Ouest | pertinent si expansion hors CI |
-| **Kkiapay**, **FedaPay** | Afrique de l'Ouest francophone | alternatives sérieuses |
-
-Proposition : **CinetPay**, une seule API pour les quatre opérateurs.
-
-### À vérifier avant de s'engager
-
-Les informations ci-dessus viennent d'articles de blog, pas du fournisseur.
-Avant toute intégration, confirmer directement auprès de CinetPay :
-
-- [ ] frais par transaction et seuil de versement
-- [ ] pièces exigées pour ouvrir un compte marchand (entreprise ? particulier ?)
-- [ ] délai de reversement des fonds
-- [ ] environnement de test (sandbox) disponible
-- [ ] fiabilité et sécurité des webhooks (signature, rejeu)
+> L'analyse qui occupait cette section recommandait **CinetPay** pour la
+> couverture mobile money ivoirienne (Orange Money, Wave, MTN MoMo, Moov) et
+> écartait Stripe et PayPal. Elle n'a pas été contredite — elle a été
+> doublée par un choix déjà implémenté. À vérifier auprès de Paystack :
+> quels opérateurs mobile money sont réellement couverts en Côte d'Ivoire,
+> les frais par transaction, et le délai de reversement.
 
 ### Règle d'implémentation
 
 Le statut d'une inscription ne devient jamais « payé » sur la foi d'une
-redirection navigateur — **uniquement sur un webhook vérifié** côté serveur.
-Une redirection se falsifie, pas une signature.
+redirection navigateur — **uniquement sur une vérification serveur**
+(`GET /payments/:reference/verify`) ou un webhook signé. Une redirection se
+falsifie, pas une signature HMAC. C'est aussi ce que dit la doc de l'API,
+mot pour mot.
 
 ## Commandes
 
@@ -314,22 +258,17 @@ npm run build    # build de production — c'est AUSSI le vrai typecheck
 npm start        # sert le build
 ```
 
-Back (`backend/`) :
+Il n'y a plus de back à lancer : il tourne chez Youssouf. Pour vérifier
+qu'il répond :
 
 ```bash
-php artisan serve --port=8001   # API + admin ; 8000 est pris par ckb-site
-php artisan migrate             # applique les migrations
-php artisan db:seed --class=EditionUnSeeder
-php artisan make:filament-user  # crée un compte d'admin — aucun n'existe
-php artisan test                # SQLite en mémoire, ne touche pas MySQL
+curl https://aidev.you-soft.com/api/v1/health
+curl https://aidev.you-soft.com/api/v1/sprints
 ```
 
-> MySQL doit tourner (WAMP). La base `aidevsprint` doit exister :
-> `CREATE DATABASE aidevsprint CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;`
-
-> `backend/CLAUDE.md` et `backend/AGENTS.md` sont générés par l'installateur
-> Laravel. Ils demandent d'installer `laravel/boost`. Rien n'a été installé :
-> à garder ou à supprimer, au choix.
+> `.env.local` doit porter
+> `NEXT_PUBLIC_API_URL=https://aidev.you-soft.com/api/v1`. Sans elle, tout
+> appel échoue franchement et le site le dit.
 
 > `npx tsc --noEmit` seul échoue sur `LayoutProps` : ce type global est généré
 > par Next dans `.next/types`. Le typecheck qui fait foi est celui de
@@ -364,7 +303,6 @@ que Next 16 a des ruptures d'API et qu'il faut lire
 ## À décider
 
 - [ ] Monorepo (`apps/web` + `apps/cms`) ou deux dépôts
-- [ ] Base de données de production (MySQL en local, voir [Backend](#backend--laravel))
 - [ ] Hébergement front et back
 - [ ] Stratégie de tests
 - [ ] Gestionnaire de paquets (npm / pnpm)
@@ -373,7 +311,15 @@ que Next 16 a des ruptures d'API et qu'il faut lire
 
 Une ligne par décision structurante, la plus récente en haut.
 
-- **2026-10-19** — **Back : Laravel 13 + Filament 5, MySQL.** Strapi est
+- **2026-10-28** — **Back : l'API de Youssouf** (`aidev.you-soft.com`,
+  NestJS + Prisma + PostgreSQL + Paystack). Le Laravel est supprimé : il
+  n'était ni déployé ni payant, et deux back-ends pour une formation n'ont
+  pas de sens. Conséquence : le paiement passe de CinetPay à **Paystack**,
+  et ville / lieu / format / formateurs restent côté site, l'API n'ayant
+  pas de champs pour eux.
+
+- **2026-10-19** — ~~**Back : Laravel 13 + Filament 5, MySQL.**~~ — annulé le
+  2026-10-28, voir ci-dessus. Strapi est
   abandonné et supprimé. Décision de Malik ; la raison n'est pas consignée, il
   ne l'a pas donnée. Le modèle de données (Édition, Formateur, Inscription)
   est conservé tel quel : il venait des types du front, pas de Strapi.

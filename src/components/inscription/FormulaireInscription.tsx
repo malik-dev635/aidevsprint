@@ -2,6 +2,7 @@
 
 import { useId, useState } from "react";
 
+import { api, ErreurApi } from "@/lib/api";
 import { CtaButton } from "@/components/ui/CtaButton";
 import type { Edition } from "@/lib/edition";
 
@@ -10,59 +11,87 @@ import type { Edition } from "@/lib/edition";
  * ailleurs — voir `ModaleInscription`.
  *
  * ── Ce que fait l'envoi ──────────────────────────────────────────────
- * `POST /api/inscriptions` sur le Laravel. L'inscription naît `en_attente` :
- * le paiement n'est pas branché, et il ne le sera pas par une redirection
- * navigateur mais par un webhook signé. Le formulaire ne fait donc qu'une
- * chose — enregistrer la demande.
+ * `POST /enrollments` sur l'API Aidev Classroom (voir `docs/api.md`).
+ * L'inscription naît `PENDING` et la réponse porte un `trackingToken` —
+ * c'est la seule fois où il est renvoyé en clair. Sans lui, le participant
+ * ne peut plus ni suivre son dossier ni payer : on le range tout de suite.
  *
- * Trois champs, pas un de plus : ce sont exactement ceux qu'accepte
- * `EnregistrerInscription` côté serveur. `statut`, `montant_fcfa` et
- * `reference_paiement` ne sont jamais envoyés — le serveur les décide.
+ * Quatre champs, exactement ceux de `StudentInputDto`. Le back refuse tout
+ * champ qu'il ne connaît pas (`forbidNonWhitelisted`) : on n'envoie rien
+ * d'autre, et surtout rien qui touche au statut ou au montant.
  *
- * ⚠️  À FAIRE AVANT MISE EN LIGNE
- * L'écran de confirmation annonce un email (choix de Malik, 2026-10-25),
- * mais Laravel n'envoie encore aucun mail : ni Mailable, ni SMTP configuré.
- * Tant que ce n'est pas écrit, la promesse n'est pas tenue.
+ * ── Le téléphone ─────────────────────────────────────────────────────
+ * L'API exige du E.164 strict (`^\+[1-9]\d{6,17}$`). Personne n'écrit son
+ * numéro comme ça en Côte d'Ivoire. On accepte donc la forme locale et on
+ * normalise — voir `normaliseTelephone`. Refuser « 07 04 92 10 80 » ferait
+ * perdre des inscriptions, et le site a un seul job.
+ *
+ * ⚠️  CE QUI N'EXISTE PAS ENCORE
+ * Le paiement. `POST /payments/enrollments/:id/initialize` est documenté et
+ * en ligne, mais il n'est pas branché ici : il demande une page de retour
+ * Paystack et la variable `PAYSTACK_CALLBACK_URL` côté serveur. L'écran de
+ * confirmation le dit au lieu de promettre un email que rien n'envoie.
  */
-
-/**
- * L'adresse du back. Pas de valeur par défaut : un repli silencieux sur
- * `localhost` partirait en production et les inscriptions se perdraient
- * sans bruit. Absente, le formulaire le dit.
- */
-const API = process.env.NEXT_PUBLIC_API_URL;
 
 const WHATSAPP_AFFICHE = "07 04 92 10 80";
 
-type NomChamp = "nom" | "telephone" | "email";
+/** Indicatif de la Côte d'Ivoire, pour les numéros écrits en local. */
+const INDICATIF_CI = "225";
+
+/** Longueur d'un numéro ivoirien depuis le passage à 10 chiffres. */
+const CHIFFRES_LOCAUX = 10;
+
+type NomChamp = "prenom" | "nom" | "email" | "telephone";
 type Erreurs = Partial<Record<NomChamp | "global", string>>;
 type Etat = "repos" | "envoi" | "ok";
 
-const VIDE: Record<NomChamp, string> = { nom: "", telephone: "", email: "" };
+const VIDE: Record<NomChamp, string> = {
+  prenom: "",
+  nom: "",
+  email: "",
+  telephone: "",
+};
 
 /**
- * Les mêmes règles que `EnregistrerInscription`, à un détail près :
- * l'email est obligatoire ici alors que l'API l'accepte vide, parce que
- * la confirmation promet un email — on ne peut pas le promettre à
- * quelqu'un qui ne l'a pas donné.
+ * Du numéro tel qu'on l'écrit ici vers celui qu'attend l'API.
+ *
+ * « 07 04 92 10 80 », « 0704921080 » et « +225 07 04 92 10 80 » donnent
+ * tous `+2250704921080`. Un numéro déjà international garde son indicatif.
+ * `null` quand on ne peut pas trancher : mieux vaut demander que deviner
+ * un indicatif et envoyer quelqu'un dans le vide.
  */
-function verifie(valeurs: Record<NomChamp, string>): Erreurs {
-  const erreurs: Erreurs = {};
-  const nom = valeurs.nom.trim();
-  const telephone = valeurs.telephone.trim();
-  const email = valeurs.email.trim();
+export function normaliseTelephone(saisi: string): string | null {
+  const brut = saisi.trim();
+  const chiffres = brut.replace(/\D/g, "");
 
-  if (nom.length < 2) erreurs.nom = "Écris ton nom complet.";
+  const international = brut.startsWith("+") || brut.startsWith("00");
+  const corps = brut.startsWith("00") ? chiffres.slice(2) : chiffres;
 
-  // Pas de contrainte de format sur le numéro : en Côte d'Ivoire il
-  // s'écrit « 07 04 92 10 80 », « +22507… » ou « 0704921080 ». Imposer
-  // une forme ferait perdre des inscriptions. On compte les chiffres.
-  if (telephone.replace(/\D/g, "").length < 8) {
-    erreurs.telephone = "Ce numéro est trop court.";
+  if (international) {
+    return /^[1-9]\d{6,17}$/.test(corps) ? `+${corps}` : null;
   }
 
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) {
+  if (chiffres.length === CHIFFRES_LOCAUX) {
+    return `+${INDICATIF_CI}${chiffres}`;
+  }
+
+  return null;
+}
+
+function verifie(valeurs: Record<NomChamp, string>): Erreurs {
+  const erreurs: Erreurs = {};
+
+  if (valeurs.prenom.trim().length < 2) erreurs.prenom = "Écris ton prénom.";
+  if (valeurs.nom.trim().length < 2) erreurs.nom = "Écris ton nom.";
+
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(valeurs.email.trim())) {
     erreurs.email = "Cette adresse email n'est pas valide.";
+  }
+
+  if (normaliseTelephone(valeurs.telephone) === null) {
+    erreurs.telephone = valeurs.telephone.trim()
+      ? "Numéro incomplet. Dix chiffres, ou l'indicatif du pays."
+      : "Le numéro est obligatoire.";
   }
 
   return erreurs;
@@ -91,7 +120,7 @@ function Champ({
   const idAide = `${id}-aide`;
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex min-w-0 flex-col gap-2">
       <label
         htmlFor={id}
         className="font-mono text-small uppercase tracking-[0.15em] text-fg/60"
@@ -139,16 +168,63 @@ function Champ({
   );
 }
 
+/** Ce que l'API renvoie à la création d'une inscription. */
+type ReponseInscription = {
+  enrollment: { id: number; status: string; totalAmountXof: number };
+  trackingToken: string;
+};
+
+/**
+ * Range le jeton de suivi. Échoue en silence : navigation privée, stockage
+ * bloqué, quota plein — aucune de ces situations ne doit empêcher
+ * l'inscription d'aboutir, elle est déjà enregistrée côté serveur.
+ */
+function rangeJetonSuivi(idInscription: number, jeton: string) {
+  try {
+    localStorage.setItem(`aidevsprint.suivi.${idInscription}`, jeton);
+  } catch {
+    // Rien à faire ici, et rien à dire au visiteur.
+  }
+}
+
+/** Le message à montrer pour une erreur venue du serveur. */
+function traduit(erreur: ErreurApi): Erreurs {
+  switch (erreur.code) {
+    // Déjà inscrit avec ce couple étudiant + sprint. C'est l'email qui
+    // identifie l'étudiant côté API : l'erreur se pose donc là.
+    case "DUPLICATE_ENROLLMENT":
+      return { email: "Tu es déjà inscrit avec cette adresse." };
+
+    case "SPRINT_CAPACITY_REACHED":
+      return {
+        global: `C'est complet. Écris-nous sur WhatsApp au ${WHATSAPP_AFFICHE}, on te met sur la liste d'attente.`,
+      };
+
+    case "TOO_MANY_REQUESTS":
+      return { global: "Trop de tentatives d'un coup. Réessaie dans une minute." };
+
+    // `SPRINT_NOT_FOUND`, `SPRINT_NOT_ACTIVE`, validation : le serveur
+    // écrit déjà en français et c'est lui qui fait autorité.
+    default:
+      return {
+        global:
+          erreur.statusCode >= 500
+            ? `L'envoi a échoué. Réessaie, ou écris-nous sur WhatsApp au ${WHATSAPP_AFFICHE}.`
+            : erreur.message,
+      };
+  }
+}
+
 export function FormulaireInscription({ edition }: { edition: Edition }) {
   const [valeurs, setValeurs] = useState(VIDE);
   const [erreurs, setErreurs] = useState<Erreurs>({});
   const [etat, setEtat] = useState<Etat>("repos");
-  const [prenom, setPrenom] = useState("");
+  const [prenomConfirme, setPrenomConfirme] = useState("");
 
   const ecrit = (champ: NomChamp) => (valeur: string) => {
     setValeurs((v) => ({ ...v, [champ]: valeur }));
     // L'erreur d'un champ disparaît dès qu'on le corrige, pas au prochain
-    // envoi : garder un champ en rouge pendant qu'on le retape est faux.
+    // envoi : garder un champ marqué pendant qu'on le retape est faux.
     setErreurs((precedentes) => {
       const suivantes = { ...precedentes };
       delete suivantes[champ];
@@ -166,79 +242,40 @@ export function FormulaireInscription({ edition }: { edition: Edition }) {
       return;
     }
 
-    if (!API) {
-      setErreurs({
-        global: `Le formulaire n'est pas encore relié au serveur. Écris-nous sur WhatsApp au ${WHATSAPP_AFFICHE}.`,
-      });
-      return;
-    }
-
     setErreurs({});
     setEtat("envoi");
 
     try {
-      const reponse = await fetch(`${API}/api/inscriptions`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
+      const { enrollment, trackingToken } = await api<ReponseInscription>(
+        "/enrollments",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            sprintId: edition.id,
+            student: {
+              firstName: valeurs.prenom.trim(),
+              lastName: valeurs.nom.trim(),
+              email: valeurs.email.trim(),
+              phone: normaliseTelephone(valeurs.telephone),
+            },
+          }),
         },
-        body: JSON.stringify({
-          edition_id: edition.id,
-          nom: valeurs.nom.trim(),
-          telephone: valeurs.telephone.trim(),
-          email: valeurs.email.trim(),
-        }),
-      });
+      );
 
-      if (reponse.ok) {
-        setPrenom(valeurs.nom.trim().split(/\s+/)[0]);
-        setValeurs(VIDE);
-        setEtat("ok");
-        return;
-      }
-
+      rangeJetonSuivi(enrollment.id, trackingToken);
+      setPrenomConfirme(valeurs.prenom.trim());
+      setValeurs(VIDE);
+      setEtat("ok");
+    } catch (cause) {
       setEtat("repos");
-
-      if (reponse.status === 422) {
-        // Laravel renvoie `{ errors: { champ: [message] } }`. On reprend
-        // ses messages : ils sont déjà en français et ils font autorité.
-        const corps = (await reponse.json()) as {
-          errors?: Record<string, string[]>;
-        };
-        const recues = corps.errors ?? {};
-        const rendues: Erreurs = {};
-        for (const champ of ["nom", "telephone", "email"] as const) {
-          if (recues[champ]?.[0]) rendues[champ] = recues[champ][0];
-        }
-        // Une erreur sur `edition_id` n'est pas la faute du visiteur :
-        // c'est l'édition qui n'est pas ouverte. On ne lui montre pas un
-        // champ fautif qu'il ne voit même pas.
-        if (recues.edition_id?.[0]) rendues.global = recues.edition_id[0];
-        setErreurs(
-          Object.keys(rendues).length > 0
-            ? rendues
-            : { global: "Le formulaire a été refusé. Vérifie tes réponses." },
-        );
-        return;
-      }
-
-      if (reponse.status === 429) {
-        setErreurs({
-          global: "Trop de tentatives d'un coup. Réessaie dans une minute.",
-        });
-        return;
-      }
-
-      setErreurs({
-        global: `L'envoi a échoué. Réessaie, ou écris-nous sur WhatsApp au ${WHATSAPP_AFFICHE}.`,
-      });
-    } catch {
-      setEtat("repos");
-      setErreurs({
-        global:
-          "Impossible de joindre le serveur. Vérifie ta connexion et réessaie.",
-      });
+      setErreurs(
+        cause instanceof ErreurApi
+          ? traduit(cause)
+          : {
+              global:
+                "Impossible de joindre le serveur. Vérifie ta connexion et réessaie.",
+            },
+      );
     }
   }
 
@@ -251,11 +288,17 @@ export function FormulaireInscription({ edition }: { edition: Edition }) {
                    py-[clamp(1.5rem,4svh,2.5rem)] text-center"
       >
         <p className="text-h3 font-bold leading-tight">
-          C&apos;est noté, {prenom}.
+          C&apos;est noté, {prenomConfirme}.
         </p>
         <p className="text-body text-fg/70">
-          Ta place est réservée. Tu reçois un email de confirmation avec les
-          détails du paiement.
+          Ta place est retenue. Il reste à régler les{" "}
+          {edition.prixFCFA.toLocaleString("fr-FR")} FCFA pour la confirmer.
+        </p>
+        {/* Le paiement en ligne n'est pas branché. On ne promet donc ni
+            email ni redirection : on donne le canal qui existe vraiment. */}
+        <p className="font-mono text-small text-accent/70">
+          [À COMPLÉTER] — le paiement en ligne. En attendant, écris-nous sur
+          WhatsApp au {WHATSAPP_AFFICHE}.
         </p>
       </div>
     );
@@ -267,22 +310,40 @@ export function FormulaireInscription({ edition }: { edition: Edition }) {
       noValidate
       className="flex flex-col gap-[clamp(1rem,2.5svh,1.5rem)]"
     >
-      <Champ
-        nom="nom"
-        etiquette="Nom complet"
-        valeur={valeurs.nom}
-        onChange={ecrit("nom")}
-        erreur={erreurs.nom}
-        type="text"
-        autoComplete="name"
-        enterKeyHint="next"
-        placeholder="Konan Yao"
-      />
+      {/* Prénom et nom sur une rangée : l'API les veut séparés, mais deux
+          champs courts l'un sous l'autre allongent le panneau pour rien. */}
+      <div className="grid gap-[clamp(1rem,2.5svh,1.5rem)] sm:grid-cols-2">
+        <Champ
+          nom="prenom"
+          etiquette="Prénom"
+          valeur={valeurs.prenom}
+          onChange={ecrit("prenom")}
+          erreur={erreurs.prenom}
+          type="text"
+          autoComplete="given-name"
+          enterKeyHint="next"
+          maxLength={100}
+          placeholder="Konan"
+        />
+
+        <Champ
+          nom="nom"
+          etiquette="Nom"
+          valeur={valeurs.nom}
+          onChange={ecrit("nom")}
+          erreur={erreurs.nom}
+          type="text"
+          autoComplete="family-name"
+          enterKeyHint="next"
+          maxLength={100}
+          placeholder="Yao"
+        />
+      </div>
 
       <Champ
         nom="telephone"
         etiquette="Téléphone (WhatsApp)"
-        aide="Celui sur lequel on peut te joindre le jour J."
+        aide="Dix chiffres suffisent, on ajoute le +225."
         valeur={valeurs.telephone}
         onChange={ecrit("telephone")}
         erreur={erreurs.telephone}
@@ -296,7 +357,6 @@ export function FormulaireInscription({ edition }: { edition: Edition }) {
       <Champ
         nom="email"
         etiquette="Email"
-        aide="La confirmation part là-dessus."
         valeur={valeurs.email}
         onChange={ecrit("email")}
         erreur={erreurs.email}
@@ -306,6 +366,7 @@ export function FormulaireInscription({ edition }: { edition: Edition }) {
         autoCapitalize="none"
         autoCorrect="off"
         enterKeyHint="send"
+        maxLength={190}
         placeholder="konan@exemple.ci"
       />
 

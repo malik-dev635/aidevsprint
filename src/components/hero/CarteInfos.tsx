@@ -1,4 +1,4 @@
-import { A_DETERMINER, CHAMPS_PROVISOIRES, type Edition } from "@/lib/edition";
+import { A_DETERMINER, FAITS_LOCAUX, type Edition } from "@/lib/edition";
 import type { ReactNode } from "react";
 
 /**
@@ -90,12 +90,11 @@ const heure = new Intl.DateTimeFormat("fr-FR", {
 });
 
 /**
- * `dateDebut` est encore une valeur de démonstration : tant qu'elle figure
- * dans `CHAMPS_PROVISOIRES`, la card affiche « [À DÉTERMINER] » plutôt
- * qu'une date crédible mais fausse. Le jour où Malik entre la vraie date et
- * retire le champ de la liste, les deux blocs se remplissent seuls.
+ * Sans édition, la card ne devine rien : les trois faits qui viennent de
+ * l'API passent en [À DÉTERMINER] plutôt que de rejouer la dernière
+ * valeur connue. Seul le lieu tient sans elle — il ne vient pas de l'API,
+ * voir `FAITS_LOCAUX`.
  */
-const DATE_ARRETEE = !CHAMPS_PROVISOIRES.includes("dateDebut");
 
 type Fait = {
   glyphe: ReactNode;
@@ -105,9 +104,8 @@ type Fait = {
   aDeterminer: boolean;
 };
 
-export function CarteInfos({ edition }: { edition: Edition }) {
-  const debut =
-    DATE_ARRETEE && edition.dateDebut ? new Date(edition.dateDebut) : null;
+export function CarteInfos({ edition }: { edition: Edition | null }) {
+  const debut = edition ? new Date(edition.dateDebut) : null;
 
   const faits: Fait[] = [
     {
@@ -125,8 +123,8 @@ export function CarteInfos({ edition }: { edition: Edition }) {
     {
       glyphe: GlypheLieu,
       etiquette: "Lieu",
-      valeur: edition.lieu ?? A_DETERMINER,
-      aDeterminer: edition.lieu === null,
+      valeur: edition?.lieu ?? FAITS_LOCAUX.lieu,
+      aDeterminer: false,
     },
   ];
 

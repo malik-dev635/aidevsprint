@@ -15,7 +15,7 @@ import {
   arreteDefilement,
   repartDefilement,
 } from "@/components/motion/defilement";
-import type { Edition } from "@/lib/edition";
+import { FAITS_LOCAUX, type Edition } from "@/lib/edition";
 
 /**
  * La modale d'inscription, et le contexte qui permet de l'ouvrir.
@@ -46,6 +46,12 @@ import type { Edition } from "@/lib/edition";
  * Aucun formulaire. C'est assumé : le site dépend déjà du JS pour le
  * compte à rebours, les révélations et les badges. La voie de secours est
  * le numéro WhatsApp, qui reste un lien ordinaire dans la section Session.
+ *
+ * ── Sans édition ─────────────────────────────────────────────────────
+ * `edition` est `null` tant qu'aucun sprint n'est `ACTIVE` côté admin.
+ * Le panneau s'ouvre quand même et le dit : un bouton qui ne répond pas
+ * laisse croire à une panne. Pas de formulaire — l'API exige un
+ * `sprintId`, il n'y aurait rien à envoyer.
  */
 
 const ContexteInscription = createContext<(() => void) | null>(null);
@@ -55,11 +61,15 @@ export function useOuvrirInscription() {
   return useContext(ContexteInscription);
 }
 
+/** Le canal qui marche quoi qu'il arrive. Voir `Session`. */
+const WHATSAPP_AFFICHE = "07 04 92 10 80";
+const WHATSAPP_LIEN = "https://wa.me/2250704921080";
+
 export function ModaleInscription({
   edition,
   children,
 }: {
-  edition: Edition;
+  edition: Edition | null;
   children: ReactNode;
 }) {
   const dialogue = useRef<HTMLDialogElement>(null);
@@ -84,10 +94,9 @@ export function ModaleInscription({
     };
   }, [ouverte]);
 
-  const prix =
-    edition.prixFCFA !== null
-      ? `${edition.prixFCFA.toLocaleString("fr-FR")} FCFA`
-      : null;
+  const prix = edition
+    ? `${edition.prixFCFA.toLocaleString("fr-FR")} FCFA`
+    : null;
 
   return (
     <ContexteInscription.Provider value={ouvre}>
@@ -160,13 +169,36 @@ export function ModaleInscription({
               date ni le quota : ils ne sont pas arrêtés, et un rappel n'est
               pas un endroit pour un [À DÉTERMINER]. */}
             <p className="mt-3 text-small text-fg/60">
-              {[prix, edition.format, edition.ville]
+              {[prix, FAITS_LOCAUX.format, FAITS_LOCAUX.ville]
                 .filter(Boolean)
                 .join(" · ")}
             </p>
 
             <div className="mt-[clamp(1.25rem,3svh,2rem)]">
-              <FormulaireInscription edition={edition} />
+              {edition ? (
+                <FormulaireInscription edition={edition} />
+              ) : (
+                <div className="flex flex-col gap-4">
+                  <p className="text-body text-fg/70">
+                    Les inscriptions ne sont pas encore ouvertes. La date de
+                    la prochaine session n&apos;est pas arrêtée.
+                  </p>
+                  <a
+                    href={WHATSAPP_LIEN}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex w-fit items-center rounded-pill
+                               border border-fg/20 px-[clamp(1.25rem,2.5vw,2rem)]
+                               py-[clamp(0.75rem,1.8svh,1rem)] text-body
+                               transition-[color,border-color,transform]
+                               duration-[200ms] ease-[var(--ease-out-strong)]
+                               hoverable:hover:border-accent
+                               active:scale-[0.97]"
+                  >
+                    Préviens-moi · WhatsApp {WHATSAPP_AFFICHE}
+                  </a>
+                </div>
+              )}
             </div>
           </div>
         </dialog>

@@ -46,10 +46,11 @@ d'inscription + encaissement des 20 000 FCFA en ligne.
 Trois conséquences directes :
 
 1. **Un back-office est nécessaire** — pour les éditions, les inscriptions et
-   les paiements. Ce n'est plus optionnel. Voir
-   [docs/stack.md](docs/stack.md#backend--laravel).
-2. **Le paiement passe par le mobile money**, pas par une passerelle
-   internationale. Voir [docs/stack.md](docs/stack.md#paiement).
+   les paiements. Il existe : c'est celui de Youssouf, le site ne fait que
+   consommer son API. Voir
+   [docs/stack.md](docs/stack.md#backend--lapi-aidev-classroom).
+2. **Le paiement passe par Paystack**, intégré dans l'API. Pas encore
+   branché côté site. Voir [docs/stack.md](docs/stack.md#paiement).
 3. **Des données personnelles sont collectées** — nom, contact, paiement.
    Mentions légales, politique de confidentialité et sécurisation des
    données ne sont pas optionnels.
@@ -65,7 +66,8 @@ Trois conséquences directes :
 **Statut :** design system figé depuis l'affiche. Rien n'est encore installé.
 
 **Stack :** Next.js 16 · TypeScript · Tailwind 4 · GSAP + Lenis · React Bits (`TS-TW`).
-Back : **Laravel 13 + Filament** · MySQL — voir [docs/stack.md](docs/stack.md#backend--laravel).
+Back : **l'API de Youssouf** (`aidev.you-soft.com`, NestJS + Paystack) —
+voir [docs/stack.md](docs/stack.md#backend--lapi-aidev-classroom).
 Détail et points ouverts dans [docs/stack.md](docs/stack.md).
 
 ## Docs

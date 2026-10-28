@@ -9,7 +9,7 @@ import { Formateurs } from "@/components/sections/Formateurs";
 import { Faq } from "@/components/sections/Faq";
 import { ModaleInscription } from "@/components/inscription/ModaleInscription";
 import { CtaFinal } from "@/components/sections/CtaFinal";
-import { EDITION_PROVISOIRE } from "@/lib/edition";
+import { recupereEdition } from "@/lib/edition";
 
 /**
  * L'ordre des sections suit le design
@@ -19,14 +19,20 @@ import { EDITION_PROVISOIRE } from "@/lib/edition";
  * Le formulaire d'inscription n'est pas une section : c'est une modale,
  * ouverte par n'importe quel « Réserver ma place ». Elle enveloppe toute
  * la page parce que la navbar aussi porte un de ces boutons.
+ *
+ * L'édition vient de l'API (voir `src/lib/edition.ts`). Elle peut être
+ * `null` — aucun sprint publié, ou serveur injoignable — et chaque section
+ * sait se montrer sans elle plutôt que d'afficher d'anciennes valeurs.
  */
-export default function Page() {
-  // TODO: remplacer par un fetch de l'édition courante sur l'API Laravel.
-  const edition = EDITION_PROVISOIRE;
+export default async function Page() {
+  const edition = await recupereEdition();
 
   return (
     <ModaleInscription edition={edition}>
-      <Navbar inscrits={edition.inscrits} quota={edition.quota} />
+      <Navbar
+        inscrits={edition?.inscrits ?? null}
+        quota={edition?.quota ?? null}
+      />
       <main id="top" className="flex-1">
         <Hero edition={edition} />
         <Probleme />

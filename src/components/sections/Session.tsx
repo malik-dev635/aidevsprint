@@ -2,7 +2,7 @@ import Link from "next/link";
 
 import { BoutonReserver } from "@/components/inscription/BoutonReserver";
 import { EtiquetteSection } from "@/components/ui/EtiquetteSection";
-import { A_DETERMINER, type Edition } from "@/lib/edition";
+import { A_DETERMINER, FAITS_LOCAUX, type Edition } from "@/lib/edition";
 import { Reveal } from "@/components/motion/Reveal";
 
 /**
@@ -63,8 +63,8 @@ function Fait({
   );
 }
 
-export function Session({ edition }: { edition: Edition }) {
-  const date = edition.dateDebut
+export function Session({ edition }: { edition: Edition | null }) {
+  const date = edition
     ? new Intl.DateTimeFormat("fr-FR", {
         day: "numeric",
         month: "long",
@@ -72,10 +72,9 @@ export function Session({ edition }: { edition: Edition }) {
       }).format(new Date(edition.dateDebut))
     : A_DETERMINER;
 
-  const prix =
-    edition.prixFCFA !== null
-      ? `${edition.prixFCFA.toLocaleString("fr-FR")} FCFA`
-      : A_DETERMINER;
+  const prix = edition
+    ? `${edition.prixFCFA.toLocaleString("fr-FR")} FCFA`
+    : A_DETERMINER;
 
   return (
     <section
@@ -99,7 +98,7 @@ export function Session({ edition }: { edition: Edition }) {
         <div className="grid gap-[clamp(2.5rem,6svh,4rem)] lg:grid-cols-2 lg:items-center lg:gap-[clamp(2rem,5vw,5rem)]">
           <div>
             <EtiquetteSection>
-              session #{edition.numero} · {edition.format}
+              {edition?.nom ?? A_DETERMINER} · {FAITS_LOCAUX.format}
             </EtiquetteSection>
 
             <h2 className="mt-[clamp(1rem,3svh,2rem)] max-w-[14ch] text-h1 font-bold leading-[1.02] tracking-tighter">
@@ -154,22 +153,14 @@ export function Session({ edition }: { edition: Edition }) {
                      border-fg/15 bg-bg/60 p-[clamp(1.5rem,3vw,2.5rem)]"
         >
           <div className="grid gap-[clamp(1.5rem,3svh,2rem)] sm:grid-cols-2 xl:grid-cols-4">
-            <Fait
-              etiquette="Date"
-              valeur={date}
-              determine={edition.dateDebut !== null}
-            />
+            <Fait etiquette="Date" valeur={date} determine={edition !== null} />
             <Fait
               etiquette="Lieu"
-              valeur={edition.ville}
-              precision={edition.lieu}
+              valeur={FAITS_LOCAUX.ville}
+              precision={FAITS_LOCAUX.lieu}
             />
             <Fait etiquette="Niveau" valeur="Bases en dev" />
-            <Fait
-              etiquette="Prix"
-              valeur={prix}
-              determine={edition.prixFCFA !== null}
-            />
+            <Fait etiquette="Prix" valeur={prix} determine={edition !== null} />
           </div>
 
           <hr className="my-[clamp(1.5rem,4svh,2.5rem)] border-fg/15" />
@@ -179,12 +170,12 @@ export function Session({ edition }: { edition: Edition }) {
               Places limitées ·{" "}
               <span
                 className={
-                  edition.quota !== null
+                  edition?.quota != null
                     ? "font-bold text-fg"
                     : "font-mono text-accent/70"
                 }
               >
-                {edition.quota !== null
+                {edition?.quota != null
                   ? `${edition.quota} places`
                   : A_DETERMINER}
               </span>

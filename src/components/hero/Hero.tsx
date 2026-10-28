@@ -4,7 +4,7 @@ import { BoutonReserver } from "@/components/inscription/BoutonReserver";
 import { CountdownFlip } from "./CountdownFlip";
 import { ModulesProgramme } from "./ModulesProgramme";
 import { SeatsGauge } from "./SeatsGauge";
-import { CHAMPS_PROVISOIRES, type Edition } from "@/lib/edition";
+import type { Edition } from "@/lib/edition";
 
 /**
  * Hero — direction C : le compte à rebours EST le hero.
@@ -20,7 +20,7 @@ import { CHAMPS_PROVISOIRES, type Edition } from "@/lib/edition";
  * elle est devenue `CarteInfos` — en texte courant, ces trois faits se
  * lisaient comme une légende plutôt que comme l'offre.
  */
-export function Hero({ edition }: { edition: Edition }) {
+export function Hero({ edition }: { edition: Edition | null }) {
   return (
     <section className="relative isolate flex min-h-svh flex-col overflow-hidden">
       {/* Aurora — React Bits. La profondeur vient de la lumière,
@@ -52,7 +52,7 @@ export function Hero({ edition }: { edition: Edition }) {
             className="flex min-w-0 flex-1 flex-col justify-center
                        gap-[clamp(1rem,4.5svh,3.5rem)]"
           >
-            <CountdownFlip dateDebut={edition.dateDebut} />
+            <CountdownFlip dateDebut={edition?.dateDebut ?? null} />
 
             <h1
             className="max-w-[14ch] text-display font-bold
@@ -80,7 +80,10 @@ export function Hero({ edition }: { edition: Edition }) {
             {/* Largeur proportionnelle à l'écran, pas un plafond fixe :
                  une barre de 26rem est trop longue sur un 14 pouces. */}
             <div className="w-full max-w-[clamp(12rem,24vw,26rem)]">
-              <SeatsGauge inscrits={edition.inscrits} quota={edition.quota} />
+              <SeatsGauge
+                inscrits={edition?.inscrits ?? null}
+                quota={edition?.quota ?? null}
+              />
             </div>
             </div>
           </div>
@@ -90,11 +93,6 @@ export function Hero({ edition }: { edition: Edition }) {
           <ModulesProgramme />
         </div>
 
-        {/* Tant que le back n'existe pas, on dit quelles données affichées
-            ne sont pas réelles. À supprimer au branchement de l'API. */}
-        <p className="font-mono text-[0.6875rem] text-fg/30" data-provisoire>
-          Données provisoires : {CHAMPS_PROVISOIRES.join(", ")}
-        </p>
       </div>
     </section>
   );
