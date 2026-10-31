@@ -3,7 +3,6 @@
 import Image from "next/image";
 
 import { BadgeSuspendu } from "@/components/formateurs/BadgeSuspendu";
-import TextType from "@/components/TextType";
 import { FORMATEURS, type Formateur } from "@/lib/formateurs";
 import { Reveal } from "@/components/motion/Reveal";
 
@@ -34,8 +33,14 @@ import { Reveal } from "@/components/motion/Reveal";
  *    trois. Avant, le bloc entier s'animait quand le premier profil
  *    arrivait — les deux suivants avaient fini d'apparaître bien avant
  *    qu'on les atteigne.
- * 2. La machine à écrire attend que la révélation du titre soit posée
- *    (voir `ATTENTE_FRAPPE`), au lieu de taper derrière un fondu.
+ * 2. Le titre ne se tape plus. La machine à écrire a été retirée le
+ *    2026-10-31 à la demande de Malik : la retarder suffisait à ne plus
+ *    chevaucher le fondu, mais elle restait instable — elle redémarre à
+ *    chaque passage de son observateur, et une phrase qui se réécrit
+ *    sous l'œil pendant qu'on lit les profils en dessous est un bug pour
+ *    le visiteur, quelle que soit la raison technique. Le titre arrive
+ *    maintenant avec la révélation du bloc, comme tous les autres titres
+ *    du site.
  * 3. Les trois badges WebGL ne se construisent plus dans la même image :
  *    voir `BadgeSuspendu` et `DELAI_BADGE`.
  *
@@ -44,16 +49,6 @@ import { Reveal } from "@/components/motion/Reveal";
  */
 
 const A_COMPLETER = "[À COMPLÉTER]";
-
-/**
- * Le retard de la machine à écrire, en millisecondes.
- *
- * La révélation dure 500 ms et le titre est le deuxième enfant du bloc,
- * donc 70 ms de cascade en plus. On attend que ce soit posé : sinon la
- * phrase se tape pendant le fondu, et les deux mouvements se marchent
- * dessus au moment précis où l'œil arrive sur le titre.
- */
-const ATTENTE_FRAPPE = 650;
 
 /** Écart entre deux montages de canvas WebGL. Voir `BadgeSuspendu`. */
 const DELAI_BADGE = 260;
@@ -172,20 +167,9 @@ export function Formateurs() {
             Les formateurs
           </p>
 
-          {/* Machine à écrire : le curseur s'arrête une fois la phrase posée,
-              elle ne tourne pas en boucle — une boucle attire l'œil en
-              permanence et vole la vedette au reste de la section. */}
-          <TextType
-            as="h2"
-            text="Un trio complet prêt à vous transmettre notre savoir."
-            loop={false}
-            typingSpeed={38}
-            initialDelay={ATTENTE_FRAPPE}
-            startOnVisible
-            cursorCharacter="_"
-            cursorClassName="text-accent"
-            className="mt-4 max-w-[22ch] text-h1 font-bold leading-[1.05] tracking-tighter text-fg"
-          />
+          <h2 className="mt-4 max-w-[22ch] text-h1 font-bold leading-[1.05] tracking-tighter">
+            Un trio complet prêt à vous transmettre notre savoir.
+          </h2>
         </Reveal>
 
         <div className="mt-[clamp(2rem,6svh,4rem)] flex flex-col gap-[clamp(2rem,6svh,4rem)]">
