@@ -200,12 +200,29 @@ participant ne peut plus ni suivre son dossier ni payer.
 
 ### Ce que Youssouf doit faire de son côté
 
-- [ ] **Ouvrir le CORS.** Mesuré le 2026-10-27 : aucun en-tête
-      `Access-Control-Allow-Origin` n'est renvoyé, pour aucune origine
-      testée (`localhost:3000`, `localhost:3001`, `ai-dev-sprint.com`). Le
-      préflight répond bien 204, mais sans cet en-tête le navigateur
-      bloque. En curl tout passe — c'est uniquement le navigateur qui est
-      bloqué. Il faut renseigner `FRONTEND_URL`.
+- [ ] **Ouvrir le CORS.** Re-mesuré le 2026-11-01 : la configuration a
+      bougé depuis le 27 octobre — `Vary: Origin`,
+      `Access-Control-Allow-Credentials`, `-Allow-Methods` et
+      `-Allow-Headers` sont désormais renvoyés. Mais
+      `Access-Control-Allow-Origin` manque toujours, et c'est le seul qui
+      compte : sans lui le navigateur jette la réponse. Testé sur cinq
+      origines (`localhost:3000`, `ai-dev-sprint.com`,
+      `www.ai-dev-sprint.com`, `aidev.you-soft.com`, une origine au
+      hasard) : aucune n'est autorisée, pas même la sienne. La forme du
+      refus — tout présent sauf `Allow-Origin`, pour toutes les origines —
+      désigne une liste blanche `enableCors({ origin: … })` qui ne
+      correspond à rien, donc `FRONTEND_URL` vide ou mal nommée en
+      production. À noter : avec `Allow-Credentials: true`, un `*` serait
+      refusé par le navigateur de toute façon. Il doit renvoyer l'origine
+      exacte.
+- [ ] **Réparer `GET /enrollments/:id/status`.** Mesuré le 2026-11-01 :
+      renvoie `500 INTERNAL_ERROR` dans tous les cas — sans jeton, avec un
+      jeton invalide, sur un identifiant inexistant. La doc annonce
+      `401 TRACKING_TOKEN_REQUIRED` ou `404 ENROLLMENT_NOT_FOUND` : le
+      guard plante avant de décider. Le site ne consomme pas cette route
+      aujourd'hui, donc rien n'est bloqué — mais c'est la route qui
+      permettrait au participant de retrouver son dossier, et elle sera
+      nécessaire le jour où on branche un lien de suivi.
 - [ ] **Créer le sprint #1 et le passer `ACTIVE`.** `GET /sprints` renvoie
       `{ items: [], total: 0 }`. Le nom du sprint s'affiche tel quel dans
       l'étiquette de la section Session : le nommer en conséquence.
