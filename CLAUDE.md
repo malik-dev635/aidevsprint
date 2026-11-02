@@ -46,8 +46,10 @@ d'inscription + encaissement des 20 000 FCFA en ligne.
 Trois conséquences directes :
 
 1. **Un back-office est nécessaire** — pour les éditions, les inscriptions et
-   les paiements. Il existe : c'est celui de Youssouf, le site ne fait que
-   consommer son API. Voir
+   les paiements. Les données et les règles sont chez Youssouf, le site ne
+   fait que consommer son API. Mais son API n'avait aucune interface : le
+   panneau `/admin` du site est cette interface depuis le 2026-11-02. Voir
+   [docs/admin.md](docs/admin.md) et
    [docs/stack.md](docs/stack.md#backend--lapi-aidev-classroom).
 2. **Le paiement passe par Paystack**, intégré dans l'API et branché côté
    site depuis le 2026-10-28 : l'écran de confirmation redirige vers
@@ -78,6 +80,7 @@ Détail et points ouverts dans [docs/stack.md](docs/stack.md).
 La doc longue vit dans `docs/`. Ce fichier ne fait que pointer dessus.
 
 - [docs/stack.md](docs/stack.md) — stack technique, commandes, conventions de code
+- [docs/admin.md](docs/admin.md) — le panneau d'administration : écrans, sécurité, pièges
 - [docs/pour-youssouf.md](docs/pour-youssouf.md) — ce qui bloque côté API, à lui transmettre
 - [docs/design.md](docs/design.md) — direction artistique, tokens, composants
 - [.claude/skills/README.md](.claude/skills/README.md) — skills installés et leurs limites
