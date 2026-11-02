@@ -200,6 +200,10 @@ participant ne peut plus ni suivre son dossier ni payer.
 
 ### Ce que Youssouf doit faire de son côté
 
+> Tout ce qui suit lui est expliqué, mesures et commandes à l'appui, dans
+> [pour-youssouf.md](./pour-youssouf.md) — le document à lui transmettre.
+
+
 - [ ] **Ouvrir le CORS.** Re-mesuré le 2026-11-01 : la configuration a
       bougé depuis le 27 octobre — `Vary: Origin`,
       `Access-Control-Allow-Credentials`, `-Allow-Methods` et
@@ -356,7 +360,16 @@ que Next 16 a des ruptures d'API et qu'il faut lire
 ## À décider
 
 - [ ] Monorepo (`apps/web` + `apps/cms`) ou deux dépôts
-- [ ] Hébergement front et back
+- [ ] **Hébergement front.** Rien n'est en place : le site ne tourne que
+      sur la machine de Malik. Mesuré le 2026-11-02, le domaine n'existe
+      même pas — `nslookup ai-dev-sprint.com` renvoie
+      `Non-existent domain`, et le RDAP Verisign répond 404 : il n'est pas
+      enregistré. Conséquences en chaîne : Youssouf n'a aucune URL à
+      ouvrir, il ne peut pas inscrire notre origine dans sa liste blanche
+      CORS, et `PAYSTACK_CALLBACK_URL` ne peut pointer nulle part. Un
+      déploiement Vercel donnerait une URL publique immédiate sans
+      attendre le domaine, ce qui débloque les trois d'un coup.
+- [ ] Hébergement back (chez Youssouf, déjà en ligne — à acter)
 - [ ] Stratégie de tests
 - [ ] Gestionnaire de paquets (npm / pnpm)
 

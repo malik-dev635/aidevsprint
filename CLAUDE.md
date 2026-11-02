@@ -78,6 +78,7 @@ Détail et points ouverts dans [docs/stack.md](docs/stack.md).
 La doc longue vit dans `docs/`. Ce fichier ne fait que pointer dessus.
 
 - [docs/stack.md](docs/stack.md) — stack technique, commandes, conventions de code
+- [docs/pour-youssouf.md](docs/pour-youssouf.md) — ce qui bloque côté API, à lui transmettre
 - [docs/design.md](docs/design.md) — direction artistique, tokens, composants
 - [.claude/skills/README.md](.claude/skills/README.md) — skills installés et leurs limites
 
