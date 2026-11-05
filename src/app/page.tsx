@@ -9,7 +9,7 @@ import { Formateurs } from "@/components/sections/Formateurs";
 import { Faq } from "@/components/sections/Faq";
 import { ModaleInscription } from "@/components/inscription/ModaleInscription";
 import { CtaFinal } from "@/components/sections/CtaFinal";
-import { recupereEdition } from "@/lib/edition";
+import { recupereSprints } from "@/lib/edition";
 
 /**
  * L'ordre des sections suit le design
@@ -25,10 +25,16 @@ import { recupereEdition } from "@/lib/edition";
  * sait se montrer sans elle plutôt que d'afficher d'anciennes valeurs.
  */
 export default async function Page() {
-  const edition = await recupereEdition();
+  // Une seule lecture du catalogue : le hero et la session gardent
+  // la session ouverte la plus récente, le parcours liste tout, et la
+  // modale ne propose que les sessions où l'on peut s'inscrire.
+  const sprints = await recupereSprints();
+  const edition = sprints.find((sprint) => sprint.statut === "ACTIVE") ?? null;
 
   return (
-    <ModaleInscription edition={edition}>
+    <ModaleInscription
+      editions={sprints.filter((sprint) => sprint.statut === "ACTIVE")}
+    >
       <Navbar
         inscrits={edition?.inscrits ?? null}
         quota={edition?.quota ?? null}
@@ -37,7 +43,7 @@ export default async function Page() {
         <Hero edition={edition} />
         <Probleme />
         <Methode />
-        <Parcours />
+        <Parcours sprints={sprints} />
         <Session edition={edition} />
         <Formateurs />
         <Faq />

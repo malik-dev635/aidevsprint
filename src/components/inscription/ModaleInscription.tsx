@@ -54,7 +54,9 @@ import { FAITS_LOCAUX, type Edition } from "@/lib/edition";
  * `sprintId`, il n'y aurait rien à envoyer.
  */
 
-const ContexteInscription = createContext<(() => void) | null>(null);
+const ContexteInscription = createContext<((sprintId?: number) => void) | null>(
+  null,
+);
 
 /** Ouvre la modale d'inscription. `null` hors du fournisseur. */
 export function useOuvrirInscription() {
@@ -66,18 +68,28 @@ const WHATSAPP_AFFICHE = "07 04 92 10 80";
 const WHATSAPP_LIEN = "https://wa.me/2250704921080";
 
 export function ModaleInscription({
-  edition,
+  editions,
   children,
 }: {
-  edition: Edition | null;
+  /** Tous les sprints ouverts : la modale laisse choisir lequel rejoindre. */
+  editions: Edition[];
   children: ReactNode;
 }) {
   const dialogue = useRef<HTMLDialogElement>(null);
   // Le formulaire est démonté à la fermeture : la fois d'après, il
   // repart vide au lieu de rouvrir sur la confirmation précédente.
   const [ouverte, setOuverte] = useState(false);
+  // Le sprint visé par le bouton qui a ouvert la modale. `null` avant
+  // toute ouverture : on prend alors le premier de la liste.
+  const [selectionId, setSelectionId] = useState<number | null>(null);
 
-  const ouvre = useCallback(() => setOuverte(true), []);
+  const ouvre = useCallback((sprintId?: number) => {
+    if (sprintId !== undefined) setSelectionId(sprintId);
+    setOuverte(true);
+  }, []);
+
+  const edition =
+    editions.find((e) => e.id === selectionId) ?? editions[0] ?? null;
 
   useEffect(() => {
     const element = dialogue.current;
@@ -176,7 +188,32 @@ export function ModaleInscription({
 
             <div className="mt-[clamp(1.25rem,3svh,2rem)]">
               {edition ? (
-                <FormulaireInscription edition={edition} />
+                <>
+                  {editions.length > 1 ? (
+                    <label className="mb-[clamp(1rem,2.5svh,1.5rem)] flex flex-col gap-2">
+                      <span className="font-mono text-small uppercase tracking-[0.15em] text-fg/60">
+                        Session
+                      </span>
+                      <select
+                        value={edition.id}
+                        onChange={(e) => setSelectionId(Number(e.target.value))}
+                        className="w-full rounded-field border border-fg/15 bg-bg
+                                   px-[clamp(0.875rem,2vw,1.125rem)]
+                                   py-[clamp(0.6875rem,1.6svh,0.9375rem)]
+                                   text-body text-fg"
+                      >
+                        {editions.map((e) => (
+                          <option key={e.id} value={e.id}>
+                            {e.nom} · {e.prixFCFA.toLocaleString("fr-FR")} FCFA
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  ) : null}
+                  {/* `key` : changer de session repart d'un formulaire vide,
+                      pas de la confirmation du sprint précédent. */}
+                  <FormulaireInscription key={edition.id} edition={edition} />
+                </>
               ) : (
                 <div className="flex flex-col gap-4">
                   <p className="text-body text-fg/70">

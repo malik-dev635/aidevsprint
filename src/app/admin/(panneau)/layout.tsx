@@ -14,6 +14,7 @@ import { deconnexion } from "../actions";
 
 const LIENS = [
   { href: "/admin", libelle: "Tableau de bord" },
+  { href: "/admin/sprints", libelle: "Sprints" },
   { href: "/admin/inscriptions", libelle: "Inscriptions" },
   { href: "/admin/paiements", libelle: "Paiements" },
 ] as const;

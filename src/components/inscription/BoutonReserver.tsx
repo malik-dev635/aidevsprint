@@ -23,12 +23,15 @@ export function BoutonReserver({
   pleineLargeur,
   className,
   onAvantOuverture,
+  sprintId,
 }: {
   children?: React.ReactNode;
   taille?: "sm" | "lg";
   pleineLargeur?: boolean;
   className?: string;
   onAvantOuverture?: () => void;
+  /** Le sprint à présélectionner dans la modale. Sans lui, le premier. */
+  sprintId?: number;
 }) {
   const ouvre = useOuvrirInscription();
 
@@ -40,7 +43,7 @@ export function BoutonReserver({
       className={className}
       onClick={() => {
         onAvantOuverture?.();
-        ouvre?.();
+        ouvre?.(sprintId);
       }}
     >
       {children}

@@ -18,7 +18,11 @@ import { api, ErreurApi, type Page } from "@/lib/api";
  * ce que la route publique expose un compteur.
  */
 
-/** Le sprint tel que l'API le renvoie. `docs/api.md` § Sprints. */
+/**
+ * Le sprint tel que le catalogue public le renvoie (`docs/api.md`
+ * § Sprints) : les sessions ouvertes et celles annoncées en
+ * « Bientôt ». Ni brouillons, ni sessions terminées.
+ */
 export type Sprint = {
   id: number;
   name: string;
@@ -29,14 +33,18 @@ export type Sprint = {
   startAt: string;
   endAt: string;
   capacity: number | null;
-  status: "DRAFT" | "ACTIVE" | "INACTIVE" | "COMPLETED";
+  status: "ACTIVE" | "INACTIVE";
 };
 
 export type Edition = {
   /** La clé du sprint. C'est elle que le formulaire envoie en `sprintId`. */
   id: number;
+  /** `ACTIVE` = inscriptions ouvertes, `INACTIVE` = annoncée en « Bientôt ». */
+  statut: "ACTIVE" | "INACTIVE";
   /** Le nom donné au sprint côté admin — il s'affiche tel quel. */
   nom: string;
+  /** Le texte saisi côté admin, ou `null` s'il n'y en a pas. */
+  description: string | null;
   /** ISO 8601. */
   dateDebut: string;
   ville: string;
@@ -68,7 +76,9 @@ export const A_DETERMINER = "[À DÉTERMINER]";
 export function versEdition(sprint: Sprint): Edition {
   return {
     id: sprint.id,
+    statut: sprint.status,
     nom: sprint.name,
+    description: sprint.description,
     dateDebut: sprint.startAt,
     prixFCFA: sprint.priceXof,
     minimumFCFA: sprint.minimumPaymentXof,
@@ -91,15 +101,36 @@ export function versEdition(sprint: Sprint): Edition {
  * même. Un site qui ne compile plus parce qu'un serveur tousse, c'est pire
  * qu'un site incomplet.
  */
-export async function recupereEdition(): Promise<Edition | null> {
+/**
+ * Tous les sprints visibles du site : les sessions ouvertes d'abord,
+ * puis celles annoncées en « Bientôt », chacune par date de début
+ * décroissante.
+ *
+ * C'est cette liste qui fait vivre la section Parcours : aucun sprint
+ * n'est écrit en dur dans le site. Vide quand rien n'est publié côté
+ * admin, ou quand l'API est injoignable.
+ */
+export async function recupereSprints(): Promise<Edition[]> {
   try {
-    // `GET /sprints` ne renvoie que les `ACTIVE`, triés du plus récent au
-    // plus ancien. Le premier est l'édition en cours.
-    const page = await api<Page<Sprint>>("/sprints?page=1&limit=1", {
+    // `GET /sprints` renvoie `ACTIVE` et `INACTIVE`, triés du plus récent
+    // au plus ancien. Le filtre ci-dessous ne garde que ces deux statuts
+    // par prudence, et c'est ici que l'ordre d'affichage se décide.
+    const page = await api<Page<Sprint>>("/sprints?page=1&limit=20", {
       revalider: 900,
     });
-    const sprint = page.items[0];
-    return sprint ? versEdition(sprint) : null;
+    const rang = (statut: Edition["statut"]) =>
+      statut === "ACTIVE" ? 0 : 1;
+    return page.items
+      .filter(
+        (sprint) =>
+          sprint.status === "ACTIVE" || sprint.status === "INACTIVE",
+      )
+      .map(versEdition)
+      .sort(
+        (a, b) =>
+          rang(a.statut) - rang(b.statut) ||
+          +new Date(b.dateDebut) - +new Date(a.dateDebut),
+      );
   } catch (cause) {
     console.error(
       "[edition] catalogue illisible :",
@@ -107,6 +138,12 @@ export async function recupereEdition(): Promise<Edition | null> {
         ? `${cause.statusCode} ${cause.code} — ${cause.message}`
         : cause,
     );
-    return null;
+    return [];
   }
+}
+
+/** La session ouverte mise en avant (hero, section, modale). */
+export async function recupereEdition(): Promise<Edition | null> {
+  const sprints = await recupereSprints();
+  return sprints.find((sprint) => sprint.statut === "ACTIVE") ?? null;
 }

@@ -12,6 +12,14 @@
  * Ce module déballe la première et transforme la seconde en `ErreurApi`.
  * Personne d'autre dans le site ne touche à `fetch` : le jour où la base
  * change, elle change ici.
+ *
+ * ── Navigateur contre serveur ──────────────────────────────────────
+ * Côté serveur (panneau admin, lecture du catalogue), on appelle l'API
+ * en direct : pas de CORS entre serveurs. Côté navigateur (inscription,
+ * paiement), on passe par le relais même-origine `/api` (voir
+ * `src/app/api/[...chemin]/route.ts`) : l'API n'autorise que les
+ * origines de son `FRONTEND_URL`, et un appel direct depuis une autre
+ * origine meurt au précontrôle CORS avant même de partir.
  */
 
 /**
@@ -53,13 +61,19 @@ export async function api<T>(
   chemin: string,
   { revalider, jetonSuivi, headers, ...init }: Options = {},
 ): Promise<T> {
-  if (!BASE_API) {
-    throw new ErreurReseau("NEXT_PUBLIC_API_URL n'est pas configurée.");
-  }
+  // Le navigateur ne parle qu'au relais même-origine (voir l'en-tête du
+  // module) : l'URL directe n'est utilisée que côté serveur.
+  const base =
+    typeof window === "undefined"
+      ? (BASE_API ??
+        (() => {
+          throw new ErreurReseau("NEXT_PUBLIC_API_URL n'est pas configurée.");
+        })())
+      : "/api";
 
   let reponse: Response;
   try {
-    reponse = await fetch(`${BASE_API}${chemin}`, {
+    reponse = await fetch(`${base}${chemin}`, {
       ...init,
       headers: {
         Accept: "application/json",

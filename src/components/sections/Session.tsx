@@ -199,6 +199,21 @@ export function Session({ edition }: { edition: Edition | null }) {
 
               <BoutonReserver />
             </div>
+
+            {/* Le parcours de reprise vit à `/paiement/reprendre` : un
+                déjà-inscrit avec un acompte y voit son reste et le paie.
+                Discret — la décision première reste Réserver. */}
+            <p className="mt-[clamp(0.75rem,2svh,1rem)] text-small text-fg/60">
+              Déjà inscrit avec un acompte ?{" "}
+              <Link
+                href="/paiement/reprendre"
+                className="text-fg underline decoration-fg/25
+                           underline-offset-4 outline-none
+                           focus-visible:text-fg hoverable:hover:text-fg"
+              >
+                Voir mon reste à payer →
+              </Link>
+            </p>
           </div>
         </div>
       </Reveal>

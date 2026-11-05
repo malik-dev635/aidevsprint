@@ -6,7 +6,10 @@ import { useSearchParams } from "next/navigation";
 import { CtaButton } from "@/components/ui/CtaButton";
 import { ErreurApi, ErreurReseau } from "@/lib/api";
 import {
+  adressePaiementValide,
+  lancePaiement,
   litTrace,
+  rangeTrace,
   SECOURS_WHATSAPP,
   traduitPaiement,
   verifiePaiement,
@@ -96,6 +99,40 @@ export function RetourPaiement() {
   const [etat, setEtat] = useState<Etat>(() =>
     reference ? { phase: "verification", reference } : { phase: "sans-reference" },
   );
+
+  // Le complément : le visiteur revient avec le reste à payer. Même
+  // garde-fou que le premier versement, et la trace du nouveau paiement
+  // rangée avant de partir — sans elle, le retour ne remonterait pas.
+  const [complementEnCours, setComplementEnCours] = useState(false);
+  const [erreurComplement, setErreurComplement] = useState<string | null>(null);
+
+  async function paieReste() {
+    if (etat.phase !== "verifie" || complementEnCours) return;
+    const reste = etat.paiement.remainingAmountXof;
+    if (reste === undefined || reste <= 0) return;
+
+    setComplementEnCours(true);
+    setErreurComplement(null);
+
+    try {
+      const lance = await lancePaiement(
+        etat.trace.idInscription,
+        reste,
+        etat.trace.jeton,
+      );
+
+      if (!adressePaiementValide(lance.authorizationUrl)) {
+        throw new Error(`adresse de paiement inattendue : ${lance.authorizationUrl}`);
+      }
+
+      rangeTrace(lance.reference, { ...etat.trace, montantXof: reste });
+
+      window.location.href = lance.authorizationUrl;
+    } catch (cause) {
+      setComplementEnCours(false);
+      setErreurComplement(traduitPaiement(cause));
+    }
+  }
 
   const verifie = useCallback(async () => {
     if (!reference) return;
@@ -214,10 +251,32 @@ export function RetourPaiement() {
         <Texte>
           {solde
             ? "Ta place est confirmée. On te retrouve le jour J."
-            : `Il reste ${reste.toLocaleString("fr-FR")} FCFA à verser pour confirmer ta place. ${SECOURS_WHATSAPP}`}
+            : `Il reste ${reste.toLocaleString("fr-FR")} FCFA à verser pour confirmer ta place.`}
         </Texte>
         <Reference reference={etat.reference} />
-        <CtaButton href="/">Retour à l&apos;accueil</CtaButton>
+        {solde ? (
+          <CtaButton href="/">Retour à l&apos;accueil</CtaButton>
+        ) : (
+          <>
+            <CtaButton
+              type="button"
+              onClick={() => void paieReste()}
+              disabled={complementEnCours}
+            >
+              {complementEnCours
+                ? "Ouverture du paiement…"
+                : `Régler le reste — ${reste.toLocaleString("fr-FR")} FCFA`}
+            </CtaButton>
+            {erreurComplement ? (
+              <p role="alert" className="text-small font-medium text-fg">
+                {erreurComplement}
+              </p>
+            ) : null}
+            <CtaButton href="/paiement/reprendre">
+              Je paierai plus tard
+            </CtaButton>
+          </>
+        )}
       </Cadre>
     );
   }

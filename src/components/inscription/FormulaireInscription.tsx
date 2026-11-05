@@ -5,9 +5,13 @@ import { useId, useState } from "react";
 import { api, ErreurApi } from "@/lib/api";
 import { CtaButton } from "@/components/ui/CtaButton";
 import {
+  acompteReservation,
+  adressePaiementValide,
+  dossiersLocaux,
   lancePaiement,
   rangeJetonSuivi,
   rangeTrace,
+  statutInscription,
   traduitPaiement,
 } from "@/lib/paiement";
 import type { Edition } from "@/lib/edition";
@@ -38,10 +42,11 @@ import type { Edition } from "@/lib/edition";
  * Paystack ramène sur `/paiement/retour`. Le détail est dans
  * `src/lib/paiement.ts`.
  *
- * On paie le prix entier en une fois, parce que c'est ce que le site
- * annonce. L'API accepte pourtant des versements partiels à partir de
- * `minimumPaymentXof` : si Malik veut ouvrir le paiement fractionné, c'est
- * ici que ça se décide, pas dans le back.
+ * L'écran de confirmation propose soit l'acompte de 30 %
+ * (`acompteReservation`), soit le total. L'API accepte les versements
+ * partiels à partir de `minimumPaymentXof` (`minimum ≤ montant ≤ reste`)
+ * et rattache autant de paiements qu'il faut à l'inscription : le reste
+ * se règle plus tard, depuis la page de retour du premier versement.
  *
  * ⚠️  Il reste une dépendance côté serveur : `PAYSTACK_CALLBACK_URL` doit
  * pointer sur https://ai-dev-sprint.com/paiement/retour. Tant qu'elle ne
@@ -194,24 +199,18 @@ type ReponseInscription = {
  * paiement. Le jeton ne transite que par la mémoire de l'onglet et par
  * `localStorage` — jamais par l'adresse.
  */
-type Confirmee = { id: number; jeton: string; prenom: string };
+type Confirmee = {
+  id: number;
+  jeton: string;
+  prenom: string;
+  email: string;
+};
 
 /**
- * L'adresse de paiement vient de notre API, mais on la contrôle quand
- * même avant d'y envoyer quelqu'un : une redirection est la dernière
- * chose qu'on veut voir détournée, et la vérification coûte trois lignes.
+ * Déjà inscrit avec cet e-mail : l'écran affiche le reste à payer et
+ * le bouton payer juste sous ce message, sans changer de page.
  */
-function adressePaystackValide(adresse: string): boolean {
-  try {
-    const url = new URL(adresse);
-    return (
-      url.protocol === "https:" &&
-      (url.hostname === "paystack.com" || url.hostname.endsWith(".paystack.com"))
-    );
-  } catch {
-    return false;
-  }
-}
+export const DEJA_INSCRIT = "Tu es déjà inscrit avec cette adresse.";
 
 /** Le message à montrer pour une erreur venue du serveur. */
 function traduit(erreur: ErreurApi): Erreurs {
@@ -219,7 +218,7 @@ function traduit(erreur: ErreurApi): Erreurs {
     // Déjà inscrit avec ce couple étudiant + sprint. C'est l'email qui
     // identifie l'étudiant côté API : l'erreur se pose donc là.
     case "DUPLICATE_ENROLLMENT":
-      return { email: "Tu es déjà inscrit avec cette adresse." };
+      return { email: DEJA_INSCRIT };
 
     case "SPRINT_CAPACITY_REACHED":
       return {
@@ -248,6 +247,13 @@ export function FormulaireInscription({ edition }: { edition: Edition }) {
   const [confirmee, setConfirmee] = useState<Confirmee | null>(null);
   const [paiementEnCours, setPaiementEnCours] = useState(false);
   const [erreurPaiement, setErreurPaiement] = useState<string | null>(null);
+  // Reprise instantanée après un « déjà inscrit » : le dossier retrouvé
+  // sur cet appareil, avec son reste à payer. `ratee` = pas trouvé ici.
+  const [reprise, setReprise] = useState<
+    { id: number; jeton: string; prenom: string; email?: string; reste: number; total: number } | null
+  >(null);
+  const [rechercheReprise, setRechercheReprise] = useState(false);
+  const [repriseRatee, setRepriseRatee] = useState(false);
 
   const ecrit = (champ: NomChamp) => (valeur: string) => {
     setValeurs((v) => ({ ...v, [champ]: valeur }));
@@ -258,7 +264,51 @@ export function FormulaireInscription({ edition }: { edition: Edition }) {
       delete suivantes[champ];
       return suivantes;
     });
+    // Changer d'e-mail invalide la reprise affichée : elle portait sur
+    // l'adresse précédente.
+    if (champ === "email") {
+      setReprise(null);
+      setRepriseRatee(false);
+    }
   };
+
+  /**
+   * Retrouve le dossier de cette session parmi ceux connus de ce
+   * navigateur, et lit son reste à payer. Instantané quand le dossier
+   * est ici ; sinon on le dit, sans inventer un montant.
+   */
+  async function retrouveDossier(sprintId: number, prenomSaisi: string) {
+    setRechercheReprise(true);
+    setReprise(null);
+    setRepriseRatee(false);
+
+    try {
+      for (const local of dossiersLocaux()) {
+        try {
+          const suivi = await statutInscription(
+            local.idInscription,
+            local.jeton,
+          );
+          if (suivi.sprint?.id !== sprintId) continue;
+          setReprise({
+            id: local.idInscription,
+            jeton: local.jeton,
+            prenom: local.prenom || prenomSaisi,
+            email: local.email,
+            reste: suivi.remainingAmountXof ?? 0,
+            total: suivi.totalAmountXof,
+          });
+          return;
+        } catch {
+          // Jeton périmé ou dossier illisible : on essaie le suivant.
+          continue;
+        }
+      }
+      setRepriseRatee(true);
+    } finally {
+      setRechercheReprise(false);
+    }
+  }
 
   async function envoie(evenement: React.FormEvent) {
     evenement.preventDefault();
@@ -295,6 +345,7 @@ export function FormulaireInscription({ edition }: { edition: Edition }) {
         id: enrollment.id,
         jeton: trackingToken,
         prenom: valeurs.prenom.trim(),
+        email: valeurs.email.trim().toLowerCase(),
       });
       setValeurs(VIDE);
       setEtat("ok");
@@ -308,6 +359,11 @@ export function FormulaireInscription({ edition }: { edition: Edition }) {
                 "Impossible de joindre le serveur. Vérifie ta connexion et réessaie.",
             },
       );
+      // Déjà inscrit avec cet e-mail : on cherche le dossier tout de
+      // suite, pour afficher son reste sans changer de page.
+      if (cause instanceof ErreurApi && cause.code === "DUPLICATE_ENROLLMENT") {
+        void retrouveDossier(edition.id, valeurs.prenom.trim());
+      }
     }
   }
 
@@ -318,28 +374,31 @@ export function FormulaireInscription({ edition }: { edition: Edition }) {
    * n'y a plus de code à nous pour l'écrire, et sans elle la page de
    * retour ne saura pas à quel dossier rattacher la référence.
    */
-  async function paie() {
-    if (!confirmee || paiementEnCours) return;
+  async function lanceEtRedirige(
+    idInscription: number,
+    jeton: string,
+    prenom: string,
+    montant: number,
+    email?: string,
+  ) {
+    if (paiementEnCours) return;
 
     setPaiementEnCours(true);
     setErreurPaiement(null);
 
     try {
-      const lance = await lancePaiement(
-        confirmee.id,
-        edition.prixFCFA,
-        confirmee.jeton,
-      );
+      const lance = await lancePaiement(idInscription, montant, jeton);
 
-      if (!adressePaystackValide(lance.authorizationUrl)) {
+      if (!adressePaiementValide(lance.authorizationUrl)) {
         throw new Error(`adresse de paiement inattendue : ${lance.authorizationUrl}`);
       }
 
       rangeTrace(lance.reference, {
-        idInscription: confirmee.id,
-        jeton: confirmee.jeton,
-        prenom: confirmee.prenom,
-        montantXof: edition.prixFCFA,
+        idInscription,
+        jeton,
+        prenom,
+        montantXof: montant,
+        email,
       });
 
       window.location.href = lance.authorizationUrl;
@@ -349,11 +408,29 @@ export function FormulaireInscription({ edition }: { edition: Edition }) {
     }
   }
 
+  async function paie(montant: number) {
+    if (!confirmee) return;
+    await lanceEtRedirige(
+      confirmee.id,
+      confirmee.jeton,
+      confirmee.prenom,
+      montant,
+      confirmee.email,
+    );
+  }
+
   if (etat === "ok" && confirmee) {
+    // 30 % pour réserver, ou le total d'un coup. `null` quand 30 %
+    // passe sous le minimum du sprint : il ne reste que le total.
+    const acompte = acompteReservation(
+      edition.prixFCFA,
+      edition.minimumFCFA,
+    );
+
     return (
       <div
         role="status"
-        className="flex flex-col gap-3 rounded-card border border-accent/60
+        className="flex flex-col items-center gap-3 rounded-card border border-accent/60
                    px-[clamp(1.25rem,3vw,2rem)]
                    py-[clamp(1.5rem,4svh,2.5rem)] text-center"
       >
@@ -362,24 +439,42 @@ export function FormulaireInscription({ edition }: { edition: Edition }) {
         </p>
         <p className="text-body text-fg/70">
           Ta place est retenue. Elle est confirmée une fois les{" "}
-          {edition.prixFCFA.toLocaleString("fr-FR")} FCFA réglés.
+          {edition.prixFCFA.toLocaleString("fr-FR")} FCFA réglés — tu peux
+          réserver avec 30 % et payer le reste plus tard.
         </p>
 
         {/* Payer tout de suite, tant que l'onglet est encore ouvert : le
             jeton de suivi ne vit que dans ce navigateur, et c'est lui qui
             autorise le paiement. Revenir demain depuis le téléphone de
             quelqu'un d'autre ne marchera pas. */}
-        <CtaButton
+        {acompte !== null ? (
+          <CtaButton
+            type="button"
+            onClick={() => void paie(acompte)}
+            disabled={paiementEnCours}
+            pleineLargeur
+            className="mt-[clamp(0.25rem,1svh,0.75rem)]"
+          >
+            {paiementEnCours
+              ? "Ouverture du paiement…"
+              : `Réserver avec 30 % — ${acompte.toLocaleString("fr-FR")} FCFA`}
+          </CtaButton>
+        ) : null}
+
+        <button
           type="button"
-          onClick={() => void paie()}
+          onClick={() => void paie(edition.prixFCFA)}
           disabled={paiementEnCours}
-          pleineLargeur
-          className="mt-[clamp(0.25rem,1svh,0.75rem)]"
+          className="inline-flex w-full items-center justify-center rounded-pill
+                     border border-fg/20 px-10 py-[clamp(0.75rem,2.4svh,1.375rem)]
+                     text-body font-bold transition-colors duration-[160ms]
+                     hoverable:hover:border-accent active:scale-[0.96]
+                     disabled:cursor-not-allowed disabled:opacity-60"
         >
           {paiementEnCours
             ? "Ouverture du paiement…"
-            : `Payer ${edition.prixFCFA.toLocaleString("fr-FR")} FCFA`}
-        </CtaButton>
+            : `Tout payer — ${edition.prixFCFA.toLocaleString("fr-FR")} FCFA`}
+        </button>
 
         {erreurPaiement && (
           <p role="alert" className="text-small font-medium text-fg">
@@ -388,9 +483,14 @@ export function FormulaireInscription({ edition }: { edition: Edition }) {
         )}
 
         <p className="text-small text-fg/45">
-          Paiement par Paystack. Tu peux aussi régler plus tard en nous
-          écrivant sur WhatsApp au {WHATSAPP_AFFICHE} — mais depuis cet
-          appareil, c&apos;est plus simple maintenant.
+          Paiement par Paystack. Le reste se règle plus tard, depuis la{" "}
+          <a
+            href="/paiement/reprendre"
+            className="underline decoration-fg/25 underline-offset-4"
+          >
+            page « reprendre mon paiement »
+          </a>
+          . Un souci ? Écris-nous sur WhatsApp au {WHATSAPP_AFFICHE}.
         </p>
       </div>
     );
@@ -461,6 +561,70 @@ export function FormulaireInscription({ edition }: { edition: Edition }) {
         maxLength={190}
         placeholder="konan@exemple.ci"
       />
+
+      {/* Déjà inscrit : le reste et le bouton payer s'affichent ici
+          même, sans changer de page. Le dossier est cherché dès
+          l'erreur, parmi ceux connus de ce navigateur. */}
+      {erreurs.email === DEJA_INSCRIT ? (
+        <div
+          role="status"
+          className="-mt-2 rounded-card border border-fg/15 bg-surface
+                     px-[clamp(0.875rem,2vw,1.125rem)]
+                     py-[clamp(0.6875rem,1.6svh,0.9375rem)]"
+        >
+          {rechercheReprise ? (
+            <p className="text-small text-fg/60">
+              On cherche ton dossier…
+            </p>
+          ) : reprise && reprise.reste > 0 ? (
+            <>
+              <p className="text-body">
+                Reste à payer :{" "}
+                <strong>
+                  {reprise.reste.toLocaleString("fr-FR")} FCFA
+                </strong>{" "}
+                <span className="text-fg/55">
+                  (sur {reprise.total.toLocaleString("fr-FR")})
+                </span>
+              </p>
+              <CtaButton
+                type="button"
+                onClick={() =>
+                  void lanceEtRedirige(
+                    reprise.id,
+                    reprise.jeton,
+                    reprise.prenom,
+                    reprise.reste,
+                    reprise.email,
+                  )
+                }
+                disabled={paiementEnCours}
+                pleineLargeur
+                className="mt-3"
+              >
+                {paiementEnCours
+                  ? "Ouverture du paiement…"
+                  : `Payer le reste — ${reprise.reste.toLocaleString("fr-FR")} FCFA`}
+              </CtaButton>
+              {erreurPaiement ? (
+                <p role="alert" className="mt-2 text-small font-medium text-fg">
+                  {erreurPaiement}
+                </p>
+              ) : null}
+            </>
+          ) : reprise ? (
+            <p className="text-body text-fg/80">
+              C&apos;est déjà réglé, ta place est confirmée.
+            </p>
+          ) : repriseRatee ? (
+            <p className="text-small text-fg/70">
+              Dossier introuvable sur cet appareil. Paie depuis le
+              navigateur où tu t&apos;es inscrit, ou écris-nous sur
+              WhatsApp au {WHATSAPP_AFFICHE}.
+            </p>
+          ) : null}
+        </div>
+      ) : null}
 
       {erreurs.global && (
         <p role="alert" className="text-small font-medium text-fg">

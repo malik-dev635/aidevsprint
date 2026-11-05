@@ -1,108 +1,108 @@
 import { BoutonReserver } from "@/components/inscription/BoutonReserver";
 import { EtiquetteSection } from "@/components/ui/EtiquetteSection";
 import { Reveal } from "@/components/motion/Reveal";
+import { A_DETERMINER, type Edition } from "@/lib/edition";
 
 /**
  * Section — le parcours.
  *
- * Transcription du design `Landing — ai-dev-sprint.com@2x.png`.
- * Les quatre sessions du parcours. Une seule est ouverte : elle est en
- * vert plein, les trois autres restent en creux. L'écart de traitement
- * fait tout le travail — inutile de barrer ou de griser.
+ * Les cartes viennent de la base : sessions ouvertes d'abord, puis
+ * celles annoncées en « Bientôt », chacune par date de début
+ * décroissante. Aucune session n'est écrite en dur.
  *
- * Le bouton de la carte ouverte était une pilule noire, reprise du design.
- * Malik a tranché le 2026-10-20 : « Réserver ma place » doit être le même
- * bouton partout, animation comprise. Le design perd donc ici sa pilule
- * noire sur fond vert, au profit de la cohérence du site.
- *
- * Les descriptions des sessions 2 à 4 ne sont pas écrites. Le design
- * portait lui-même des `[DESCRIPTION SESSION #N]` : ce sont des trous
- * assumés, pas un texte à inventer.
+ * Seule une session ouverte est verte avec un bouton Réserver : une
+ * session « Bientôt » reste en creux, sans bouton — l'API refuse
+ * d'ailleurs toute inscription hors `ACTIVE`, un bouton ici mènerait
+ * à une erreur garantie.
  */
 
 const A_COMPLETER = "[À COMPLÉTER]";
 
-type Session = {
+function CarteSprint({
+  numero,
+  sprint,
+}: {
   numero: string;
-  titre: string;
-  texte: string | null;
-  ouverte: boolean;
-};
+  sprint: Edition;
+}) {
+  const date = new Intl.DateTimeFormat("fr-FR", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(new Date(sprint.dateDebut));
 
-const SESSIONS: Session[] = [
-  {
-    numero: "#1",
-    titre: "Portfolio",
-    texte: "Ton portfolio avec espace admin et chatbot IA, déployé en ligne.",
-    ouverte: true,
-  },
-  { numero: "#2", titre: "SaaS", texte: null, ouverte: false },
-  { numero: "#3", titre: "App mobile", texte: null, ouverte: false },
-  { numero: "#4", titre: "API + IA", texte: null, ouverte: false },
-];
+  const ligneFait = `${date} · ${sprint.prixFCFA.toLocaleString("fr-FR")} FCFA`;
 
-function CarteSession({ numero, titre, texte, ouverte }: Session) {
-  if (ouverte) {
+  // Une session annoncée, pas encore ouverte : le creux de l'ancien
+  // design, pas le vert des inscriptions ouvertes. Et pas de bouton :
+  // il n'y a encore rien à réserver.
+  if (sprint.statut !== "ACTIVE") {
     return (
       <li
-        className="flex flex-col rounded-card bg-accent
-                   p-[clamp(1.5rem,2.5vw,2rem)] text-on-accent"
+        className="flex flex-col rounded-card border border-fg/10
+                   p-[clamp(1.5rem,2.5vw,2rem)]"
       >
         <div className="flex flex-wrap items-center justify-between gap-[1ch]">
-          <span className="font-mono text-small font-bold">{numero}</span>
-          <span className="rounded-pill bg-on-accent/10 px-[1.25ch] py-[0.5ch] text-small font-bold">
-            Inscriptions ouvertes
+          <span className="font-mono text-small font-bold text-accent">
+            {numero}
+          </span>
+          <span className="rounded-pill border border-fg/20 px-[1.25ch] py-[0.5ch] text-small text-fg/70">
+            Bientôt
           </span>
         </div>
 
         <h3 className="mt-[clamp(1rem,2.5svh,1.75rem)] text-h2 font-bold tracking-tighter">
-          {titre}
+          {sprint.nom}
         </h3>
 
-        <p className="mt-[clamp(0.75rem,1.5svh,1rem)] text-body">{texte}</p>
+        <p className="mt-[clamp(0.75rem,1.5svh,1rem)] font-mono text-small text-fg/60">
+          {ligneFait}
+        </p>
 
-        {/* Une cale qui pousse le bouton en bas quelle que soit la hauteur
-            des cartes voisines, avec un écart minimum garanti : sans elle,
-            le bouton flotte au milieu de la plus haute. */}
-        <span
-          aria-hidden
-          className="min-h-[clamp(1.5rem,4svh,3rem)] flex-1"
-        />
-
-        {/* Le même bouton que partout ailleurs, taille `sm` : la carte
-            est l'une de quatre sur une rangée, elle n'a pas la place du
-            format du hero. Le libellé reste court pour la même raison. */}
-        <BoutonReserver taille="sm">Réserver</BoutonReserver>
+        <p className="mt-[clamp(0.75rem,1.5svh,1rem)] font-mono text-small text-accent/70">
+          {sprint.description ?? `${A_COMPLETER} — description à saisir côté admin.`}
+        </p>
       </li>
     );
   }
 
   return (
     <li
-      className="flex flex-col rounded-card border border-fg/10
-                 p-[clamp(1.5rem,2.5vw,2rem)]"
+      className="flex flex-col rounded-card bg-accent
+                 p-[clamp(1.5rem,2.5vw,2rem)] text-on-accent"
     >
       <div className="flex flex-wrap items-center justify-between gap-[1ch]">
-        <span className="font-mono text-small font-bold text-accent">
-          {numero}
-        </span>
-        <span className="rounded-pill border border-fg/20 px-[1.25ch] py-[0.5ch] text-small text-fg/70">
-          Bientôt
+        <span className="font-mono text-small font-bold">{numero}</span>
+        <span className="rounded-pill bg-on-accent/10 px-[1.25ch] py-[0.5ch] text-small font-bold">
+          Inscriptions ouvertes
         </span>
       </div>
 
       <h3 className="mt-[clamp(1rem,2.5svh,1.75rem)] text-h2 font-bold tracking-tighter">
-        {titre}
+        {sprint.nom}
       </h3>
 
-      <p className="mt-[clamp(0.75rem,1.5svh,1rem)] font-mono text-small text-accent/70">
-        {texte ?? `${A_COMPLETER} — description de la session ${numero}.`}
+      <p className="mt-[clamp(0.75rem,1.5svh,1rem)] text-body">
+        {sprint.description ?? `${A_COMPLETER} — description à saisir côté admin.`}
       </p>
+
+      <p className="mt-[clamp(0.75rem,1.5svh,1rem)] font-mono text-small font-bold">
+        {ligneFait}
+      </p>
+
+      {/* Une cale qui pousse le bouton en bas quelle que soit la hauteur
+          des cartes voisines, avec un écart minimum garanti : sans elle,
+          le bouton flotte au milieu de la plus haute. */}
+      <span aria-hidden className="min-h-[clamp(1.5rem,4svh,3rem)] flex-1" />
+
+      <BoutonReserver taille="sm" sprintId={sprint.id}>
+        Réserver
+      </BoutonReserver>
     </li>
   );
 }
 
-export function Parcours() {
+export function Parcours({ sprints }: { sprints: Edition[] }) {
   return (
     <section id="parcours" className="relative py-[clamp(4rem,12svh,9rem)]">
       <Reveal className="shell">
@@ -116,11 +116,22 @@ export function Parcours() {
           Chaque session = une journée et un vrai projet en ligne à la fin.
         </p>
 
-        <ul className="mt-[clamp(2.5rem,8svh,5rem)] grid gap-[clamp(1rem,1.5vw,1.25rem)] sm:grid-cols-2 xl:grid-cols-4">
-          {SESSIONS.map((session) => (
-            <CarteSession key={session.numero} {...session} />
-          ))}
-        </ul>
+        {sprints.length > 0 ? (
+          <ul className="mt-[clamp(2.5rem,8svh,5rem)] grid gap-[clamp(1rem,1.5vw,1.25rem)] sm:grid-cols-2 xl:grid-cols-4">
+            {sprints.map((sprint, i) => (
+              <CarteSprint
+                key={sprint.id}
+                numero={`#${i + 1}`}
+                sprint={sprint}
+              />
+            ))}
+          </ul>
+        ) : (
+          <p className="mt-[clamp(2.5rem,8svh,5rem)] max-w-[60ch] rounded-card border border-fg/10 p-[clamp(1.5rem,2.5vw,2rem)] font-mono text-small text-accent/70">
+            {A_DETERMINER} — aucun sprint n&apos;est publié pour l&apos;instant.
+            Les inscriptions ouvriront avec la prochaine session.
+          </p>
+        )}
       </Reveal>
     </section>
   );

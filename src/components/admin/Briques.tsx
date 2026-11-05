@@ -3,8 +3,10 @@ import Link from "next/link";
 import {
   LIBELLE_INSCRIPTION,
   LIBELLE_PAIEMENT,
+  LIBELLE_SPRINT,
   type StatutInscription,
   type StatutPaiement,
+  type StatutSprint,
 } from "@/lib/admin/types";
 
 /**
@@ -86,6 +88,20 @@ export function PastilleInscription({ statut }: { statut: StatutInscription }) {
                   )}`}
     >
       {LIBELLE_INSCRIPTION[statut] ?? statut}
+    </span>
+  );
+}
+
+export function PastilleSprint({ statut }: { statut: StatutSprint }) {
+  return (
+    <span
+      className={`inline-block shrink-0 rounded-pill border px-3 py-1
+                  font-mono text-small ${pastille(
+                    statut === "ACTIVE",
+                    statut === "COMPLETED" || statut === "INACTIVE",
+                  )}`}
+    >
+      {LIBELLE_SPRINT[statut] ?? statut}
     </span>
   );
 }

@@ -4,7 +4,14 @@ import { redirect } from "next/navigation";
 
 import { api, ErreurApi, ErreurReseau, type Page } from "@/lib/api";
 import { litSession } from "./session";
-import type { Inscription, Paiement, Resume, StatutInscription } from "./types";
+import type {
+  Inscription,
+  Paiement,
+  Resume,
+  Sprint,
+  StatutInscription,
+  StatutSprint,
+} from "./types";
 
 /**
  * Les appels aux routes `/admin` de l'API.
@@ -109,6 +116,51 @@ export function paiements({
   return apiAdmin<Page<Paiement>>(`/admin/payments?${q}`);
 }
 
+/* ── Sprints ─────────────────────────────────────────────────────────── */
+
+export type NouveauSprint = {
+  name: string;
+  slug: string;
+  description?: string;
+  priceXof: number;
+  minimumPaymentXof: number;
+  startAt: string;
+  endAt: string;
+  capacity?: number | null;
+  status?: StatutSprint;
+};
+
+export function sprints({
+  page = 1,
+  limit = 20,
+  statut,
+}: {
+  page?: number;
+  limit?: number;
+  statut?: string;
+} = {}) {
+  const q = new URLSearchParams({ page: String(page), limit: String(limit) });
+  if (statut) q.set("status", statut);
+  return apiAdmin<Page<Sprint>>(`/admin/sprints?${q}`);
+}
+
+export function creerSprint(donnees: NouveauSprint) {
+  return apiAdmin<Sprint>(`/sprints`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(donnees),
+    cache: "no-store",
+  });
+}
+
+export function changeStatutSprint(id: number, statut: StatutSprint) {
+  return apiAdmin<Sprint>(`/sprints/${id}/status`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ status: statut }),
+  });
+}
+
 /* ── Écritures ───────────────────────────────────────────────────────── */
 
 export function changeStatut(id: number, statut: StatutInscription) {
@@ -169,6 +221,18 @@ export function traduitAdmin(cause: unknown): string {
     case "PAYSTACK_VERIFY_FAILED":
     case "PAYSTACK_UNAVAILABLE":
       return "Paystack ne répond pas. Réessaie dans un instant.";
+    case "SPRINT_SLUG_EXISTS":
+      return "Ce slug existe déjà. Choisis-en un autre.";
+    case "MINIMUM_EXCEEDS_PRICE":
+      return "Le versement minimum ne peut pas dépasser le prix.";
+    case "INVALID_DATES":
+      return "La date de fin doit être après la date de début.";
+    case "INVALID_STATUS_TRANSITION":
+      return "Ce changement de statut n'est pas autorisé depuis l'état actuel.";
+    case "SPRINT_HAS_ENROLLMENTS":
+      return "Des inscriptions existent : désactive ou termine le sprint au lieu de le supprimer.";
+    case "SPRINT_NOT_FOUND":
+      return "Ce sprint n'existe pas."
     default:
       return cause.statusCode >= 500
         ? `Erreur serveur (${cause.code}).`

@@ -32,6 +32,35 @@ export const TRANSITIONS: Record<StatutInscription, StatutInscription[]> = {
   COMPLETED: [],
 };
 
+/** `SprintStatus` côté Prisma. */
+export type StatutSprint = "DRAFT" | "ACTIVE" | "INACTIVE" | "COMPLETED";
+
+/**
+ * Les transitions que l'API accepte (`SPRINT_TRANSITIONS` côté back).
+ * « Lancer » = `DRAFT` → `ACTIVE` (ou `INACTIVE` → `ACTIVE`).
+ */
+export const TRANSITIONS_SPRINT: Record<StatutSprint, StatutSprint[]> = {
+  DRAFT: ["ACTIVE", "INACTIVE"],
+  ACTIVE: ["INACTIVE", "COMPLETED"],
+  INACTIVE: ["ACTIVE", "DRAFT"],
+  COMPLETED: [],
+};
+
+export type Sprint = {
+  id: number;
+  name: string;
+  slug: string;
+  description?: string | null;
+  priceXof: number;
+  minimumPaymentXof: number;
+  startAt: string;
+  endAt: string;
+  capacity?: number | null;
+  status: StatutSprint;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
 export type Administrateur = {
   id: number;
   name: string;
@@ -113,6 +142,13 @@ export const LIBELLE_PAIEMENT: Record<StatutPaiement, string> = {
   SUCCESS: "Réussi",
   FAILED: "Échoué",
   ABANDONED: "Abandonné",
+};
+
+export const LIBELLE_SPRINT: Record<StatutSprint, string> = {
+  DRAFT: "Brouillon",
+  ACTIVE: "Lancé",
+  INACTIVE: "Inactif",
+  COMPLETED: "Terminé",
 };
 
 /**

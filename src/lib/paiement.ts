@@ -68,6 +68,32 @@ export type TracePaiement = {
   jeton: string;
   prenom: string;
   montantXof: number;
+  /** Ajouté après coup pour retrouver un dossier par e-mail. Les traces
+      d'avant ne l'ont pas : elles restent utilisables, sans filtre. */
+  email?: string;
+};
+
+/** Un dossier retrouvé sur cet appareil, avant d'interroger l'API. */
+export type DossierLocal = {
+  idInscription: number;
+  jeton: string;
+  prenom?: string;
+  email?: string;
+};
+
+/** Le résumé que rend `GET /enrollments/:id/status` (soldes inclus). */
+export type DossierSuivi = {
+  id: number;
+  status: "PENDING" | "CONFIRMED" | "CANCELLED" | "COMPLETED";
+  totalAmountXof: number;
+  totalPaidXof?: number;
+  remainingAmountXof?: number;
+  sprint?: {
+    id: number;
+    name: string;
+    status: string;
+    minimumPaymentXof: number;
+  } | null;
 };
 
 /* ── Stockage local ──────────────────────────────────────────────────── */
@@ -127,6 +153,63 @@ export function litTrace(reference: string): TracePaiement | null {
   }
 }
 
+/**
+ * Les dossiers d'inscription connus de ce navigateur : jetons rangés à
+ * l'inscription (`suivi.<id>`) et traces des versements lancés
+ * (`paiement.<reference>`), dédupliqués par inscription.
+ *
+ * Même navigateur, même appareil : le jeton de suivi ne sort jamais
+ * d'ici, donc un dossier ouvert ailleurs reste introuvable — c'est
+ * assumé, voir l'en-tête du module.
+ */
+export function dossiersLocaux(): DossierLocal[] {
+  const parId = new Map<number, DossierLocal>();
+
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const cle = localStorage.key(i);
+      if (!cle || !cle.startsWith(`${PREFIXE}.`)) continue;
+
+      const suivi = cle.match(/\.suivi\.(\d+)$/);
+      if (suivi) {
+        const id = Number(suivi[1]);
+        const jeton = lit(cle);
+        if (jeton && !parId.has(id)) {
+          parId.set(id, { idInscription: id, jeton });
+        }
+        continue;
+      }
+
+      if (cle.includes(".paiement.")) {
+        const trace = litTrace(cle.slice(`${PREFIXE}.paiement.`.length));
+        if (trace && !parId.has(trace.idInscription)) {
+          parId.set(trace.idInscription, {
+            idInscription: trace.idInscription,
+            jeton: trace.jeton,
+            prenom: trace.prenom,
+            email: trace.email,
+          });
+        }
+      }
+    }
+  } catch {
+    return [];
+  }
+
+  return [...parId.values()];
+}
+
+/** Le résumé d'un dossier : montants, solde, statut. */
+export async function statutInscription(
+  idInscription: number,
+  jeton: string,
+): Promise<DossierSuivi> {
+  return api<DossierSuivi>(`/enrollments/${idInscription}/status`, {
+    jetonSuivi: jeton,
+    cache: "no-store",
+  });
+}
+
 /* ── Appels ──────────────────────────────────────────────────────────── */
 
 /**
@@ -155,6 +238,42 @@ export async function lancePaiement(
  * les journaux du serveur et dans le `Referer` de la page suivante. Un
  * jeton qui tient lieu de mot de passe n'a rien à y faire.
  */
+/**
+ * L'acompte qui réserve une place : 30 % du total, arrondi au franc
+ * supérieur.
+ *
+ * `null` quand 30 % ne passe pas : montant nul, total déjà soldé, ou
+ * acompte sous le minimum du sprint — dans ce cas le visiteur paie tout,
+ * et c'est l'API qui tranche (`PAYMENT_AMOUNT_BELOW_MINIMUM`).
+ */
+export function acompteReservation(
+  totalXof: number,
+  minimumXof: number,
+): number | null {
+  if (!Number.isFinite(totalXof) || totalXof <= 0) return null;
+  const acompte = Math.ceil(totalXof * 0.3);
+  if (acompte <= 0 || acompte >= totalXof) return null;
+  if (acompte < minimumXof) return null;
+  return acompte;
+}
+
+/**
+ * L'adresse de paiement vient de notre API, mais on la contrôle quand
+ * même avant d'y envoyer quelqu'un : une redirection est la dernière
+ * chose qu'on veut voir détournée, et la vérification coûte trois lignes.
+ */
+export function adressePaiementValide(adresse: string): boolean {
+  try {
+    const url = new URL(adresse);
+    return (
+      url.protocol === "https:" &&
+      (url.hostname === "paystack.com" || url.hostname.endsWith(".paystack.com"))
+    );
+  } catch {
+    return false;
+  }
+}
+
 export async function verifiePaiement(
   reference: string,
   jeton: string,
@@ -191,6 +310,7 @@ export function traduitPaiement(erreur: unknown): string {
     case "PAYMENT_AMOUNT_EXCEEDS_BALANCE":
       return `Le montant dépasse ce qu'il reste à régler. ${SECOURS_WHATSAPP}`;
 
+    case "PAYMENT_AMOUNT_BELOW_MINIMUM":
     case "BELOW_MINIMUM":
     case "PAYMENT_AMOUNT_INVALID":
       return `Ce montant n'est pas accepté. ${SECOURS_WHATSAPP}`;

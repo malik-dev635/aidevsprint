@@ -3,11 +3,17 @@
 import { useActionState } from "react";
 
 import {
+  changerStatutSprint,
   changeStatutInscription,
   reverifiePaiement,
   type Etat,
 } from "@/app/admin/actions";
-import { LIBELLE_INSCRIPTION, type StatutInscription } from "@/lib/admin/types";
+import {
+  LIBELLE_INSCRIPTION,
+  LIBELLE_SPRINT,
+  type StatutInscription,
+  type StatutSprint,
+} from "@/lib/admin/types";
 
 /**
  * Les deux boutons qui écrivent quelque chose.
@@ -57,6 +63,49 @@ export function BoutonStatut({
         }`}
       >
         {enCours ? "…" : `Passer à « ${LIBELLE_INSCRIPTION[vers]} »`}
+      </button>
+      {etat.erreur ? (
+        <span role="alert" className="font-mono text-small text-fg/70">
+          {etat.erreur}
+        </span>
+      ) : null}
+    </form>
+  );
+}
+
+/**
+ * Fait passer un sprint à l'état demandé (« Lancer », « Désactiver »…).
+ *
+ * Même principe que `BoutonStatut` : un formulaire par bouton, pour que
+ * l'attente et l'erreur restent locales à la ligne.
+ */
+export function BoutonSprint({
+  id,
+  vers,
+  miseEnAvant,
+}: {
+  id: number;
+  vers: StatutSprint;
+  miseEnAvant?: boolean;
+}) {
+  const [etat, agir, enCours] = useActionState(changerStatutSprint, INITIAL);
+
+  return (
+    <form action={agir} className="flex flex-col items-start gap-2">
+      <input type="hidden" name="id" value={id} />
+      <input type="hidden" name="statut" value={vers} />
+      <button
+        type="submit"
+        disabled={enCours}
+        className={`${bouton} ${
+          miseEnAvant ?? vers === "ACTIVE"
+            ? "border-accent/50 text-accent"
+            : "border-fg/20 text-fg/60"
+        }`}
+      >
+        {enCours ? "…" : LIBELLE_SPRINT[vers] === "Lancé" && vers === "ACTIVE"
+          ? "Lancer"
+          : `Passer à « ${LIBELLE_SPRINT[vers]} »`}
       </button>
       {etat.erreur ? (
         <span role="alert" className="font-mono text-small text-fg/70">
