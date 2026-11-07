@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import Link from "next/link";
 
 import { exigeSession } from "@/lib/admin/api";
@@ -9,13 +10,29 @@ import { FormulaireSprint } from "@/components/admin/FormulaireSprint";
  *
  * La page ne fait que vérifier la session et afficher le formulaire :
  * toute la validation métier vit dans l'action `creerNouveauSprint`.
+ *
+ * ⚠️  La vérification de session lit le cookie, donc elle est dynamique.
+ *     Sous `cacheComponents` elle doit vivre sous un `<Suspense>`, sinon
+ *     elle empêche le prérendu et **le build échoue** :
+ *
+ *         Route "/admin/sprints/nouveau": Next.js encountered uncached
+ *         or runtime data during prerendering.
+ *
+ *     D'où `Garde`, isolée dans sa frontière. Le formulaire, lui, n'a
+ *     besoin de rien du serveur : il reste statique et s'affiche tout de
+ *     suite, sans attendre la vérification.
+ *
+ *     Voir docs/admin.md, « Trois pièges de cacheComponents ».
  */
 
-export default async function PageNouveauSprint() {
-  await exigeSession();
-
+export default function PageNouveauSprint() {
   return (
     <>
+      {/* Ne rend rien : elle redirige, ou laisse passer. */}
+      <Suspense fallback={null}>
+        <Garde />
+      </Suspense>
+
       <Surtitre>Sessions</Surtitre>
       <TitrePage>Nouveau sprint</TitrePage>
 
@@ -37,4 +54,9 @@ export default async function PageNouveauSprint() {
       </div>
     </>
   );
+}
+
+async function Garde() {
+  await exigeSession();
+  return null;
 }
